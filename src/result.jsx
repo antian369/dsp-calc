@@ -466,7 +466,7 @@ export function Result({needs_list, set_needs_list}) {
             {/* add by lian.zt 生成蓝图 */}
             {produceUnits.length > 0 &&
                 <button className="ms-2 btn btn-outline-primary text-nowrap mineralize-btn"
-                    onClick={() => generateBlueprint(produceUnits, lp_surplus_list)}>
+                    onClick={() => generateBlueprint(produceUnits, lp_surplus_list, needs_list)}>
                 <div>生成蓝图</div>
             </button>}
         </div>
