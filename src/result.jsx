@@ -5,6 +5,7 @@ import {ItemIcon} from './icon';
 import {NplRows} from './natural_production_line';
 import {HorizontalMultiButtonSelect, Recipe} from './recipe';
 import {AutoSizedInput} from './ui_components/auto_sized_input.jsx';
+import { generateBlueprint } from './global_blueprint.jsx';
 
 export function RecipeSelect({item, choice, onChange}) {
     const global_state = useContext(GlobalStateContext);
@@ -208,8 +209,9 @@ export function Result({needs_list, set_needs_list}) {
         <a key={item} className="m-1 cursor-pointer" onClick={() => unmineralize(item)}><ItemIcon item={item}/></a>
     ));
 
+    const produceUnits = []; // 生产单元
     let result_table_rows = [];
-    for (let i in result_dict) {
+    for (let i in result_dict) {        
         side_products[i] = side_products[i] || {};
         let total = result_dict[i] + Object.values(side_products[i]).reduce((a, b) => a + b, 0);
         if (total < 1e-6) continue;
@@ -324,16 +326,32 @@ export function Result({needs_list, set_needs_list}) {
             <td><RecipeSelect item={i} onChange={change_recipe}
                               choice={scheme_data.item_recipe_choices[i]}/></td>
             {/* 所选增产模式 */}
-            <td><ProModeSelect recipe_id={recipe_id} onChange={change_pro_mode}
-                               choice={scheme_data.scheme_for_recipe[recipe_id]["增产模式"]}/></td>
+            {/* <td><ProModeSelect recipe_id={recipe_id} onChange={change_pro_mode}
+                               choice={scheme_data.scheme_for_recipe[recipe_id]["增产模式"]}/></td> */}
             {/* 所选增产剂 */}
-            <td><ProNumSelect onChange={change_pro_num}
-                              choice={scheme_data.scheme_for_recipe[recipe_id]["增产点数"]}/></td>
+            {/* <td><ProNumSelect onChange={change_pro_num}
+                              choice={scheme_data.scheme_for_recipe[recipe_id]["增产点数"]}/></td> */}
             {/* 所选工厂种类 */}
             <td><FactorySelect recipe_id={recipe_id} onChange={change_factory}
                                choice={scheme_data.scheme_for_recipe[recipe_id]["建筑"]}/></td>
         </tr>);
-    }
+
+        // add by lian.zt
+        const produceUnit = {}; // 生产单元，包含：物品、产能、工厂、工厂数量、配方、增产、溢出产能、是否源矿
+        produceUnits.push(produceUnit);
+        produceUnit.item = i; // 物品
+        produceUnit.grossOutput = get_gross_output(result_dict[i], i); // 分钟毛产出
+        produceUnit.factory = factory_name; // 工厂
+        produceUnit.recipe = recipe_id; // 配方
+        produceUnit.factoryNumber = factory_number; // 工厂数量
+        produceUnit.isMineralized = is_mineralized; // 是否源矿
+        produceUnit.sideProducts = side_products[i]; // 副产物
+        produceUnit.proNum = scheme_data.scheme_for_recipe[recipe_id]["增产点数"]; // 增产剂number：0-无，1-1级，2-2级，3-3级
+        produceUnit.theoryOutput = produceUnit.grossOutput; // 理论输出
+        for (const item in produceUnit.sideProducts) {
+            produceUnit.theoryOutput += produceUnit.sideProducts[item]; // 输出数量+副产数量
+        }
+    }    
 
     for (let NPId in natural_production_line) {
         let recipe = game_data.recipe_data[item_data[natural_production_line[NPId]["目标物品"]][natural_production_line[NPId]["配方id"]]];
@@ -394,8 +412,8 @@ export function Result({needs_list, set_needs_list}) {
                 <th width={130}>产能</th>
                 <th width={110}>工厂</th>
                 <th width={300}>配方选取</th>
-                <th width={180}>增产模式</th>
-                <th width={160}>增产剂</th>
+                {/* <th width={180}>增产模式</th>
+                <th width={160}>增产剂</th> */}
                 <th width={170}>工厂类型</th>
             </tr>
             </thead>
@@ -444,6 +462,13 @@ export function Result({needs_list, set_needs_list}) {
                         MW
                     </span>
                 </>}
+
+            {/* add by lian.zt 生成蓝图 */}
+            {produceUnits.length > 0 &&
+                <button className="ms-2 btn btn-outline-primary text-nowrap mineralize-btn"
+                    onClick={() => generateBlueprint(produceUnits, lp_surplus_list)}>
+                <div>生成蓝图</div>
+            </button>}
         </div>
     </div>;
 }
