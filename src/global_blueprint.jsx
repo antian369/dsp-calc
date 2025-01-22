@@ -161,7 +161,6 @@ class MixedConveyerBeltBuleprint {
   compute() {
     this.belt.compute();
     console.log("传送带利用率：", this.belt.beltUsageRate);
-    
   }
 
   /**
@@ -254,12 +253,15 @@ class BeltUnit {
       // 物品数不能超过3个传送带
       throw new Error("中间产物种类数量超过传送带最大容量。");
     }
+    this.buleprint.multiple = Math.ceil(items[0].share / beltSize);
+    if (this.buleprint.multiple > 1) {
+      // todo: 未来再考虑支持多份蓝图的情况
+    }
     const shareCount = items.reduce((a, b) => a + b.share, 0);
     const beltCount = Math.ceil(shareCount / beltSize);
     if (beltCount > 3) {
       throw new Error("中间产物数量超过传送带最大容量。");
     }
-    this.buleprint.multiple = Math.ceil(items[0].share / beltSize); // todo: 未来再考虑支持多份蓝图的情况
     const beltUsage = [];
     const beltItems = [];
     for (let i = 0; i < beltCount; i++) {
