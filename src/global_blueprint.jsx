@@ -1,6 +1,34 @@
 /**
  * 混带蓝图生成器
  */
+/*
+// 一个生产单元，量化计算结果的一行就是一个生产单元
+interface ProduceUnit {
+  factory: string; // 工厂名
+  factoryNumber: number; // 工厂数量
+  grossOutput: number; // 实际输出产物数量
+  isMineralized: boolean; // 是否源矿
+  item: string; // 产物名称
+  proNum: number; // 喷涂等级，0-无
+  recipe: number; // 配方下标，不是配方ID，下标+1=ID
+  sideProducts: Record<string, string>; // 副产物：<产物名称, 数量 字符串形式>
+  theoryOutput: number; // 理论产出的产物数量，包含其它配方的副产物数量
+}
+
+// 配方
+interface Recipe {
+  ID: number; // 下标+1
+  Type: number; // -1 为黑雾产出
+  Factories: number[]; // 工厂
+  Name: string; // 配方名称
+  Items: number[]; // 原料id
+  ItemCounts: number[]; //
+  Results: number[]; //产物id
+  ResultCounts: number[];
+  Proliferator: number; // 喷涂类型：1-仅加速，3-可加速与增产
+  IconName: string; // 图标
+}
+*/
 
 import { recipes, items } from "../data/Vanilla.json";
 
@@ -65,7 +93,9 @@ function orderRecipe(produceUnits) {
   const sortedItem = new Set(); // 已排序的配方包含的物品
   const sortRecipes = []; // 配方排序
   // 未排序的配方
-  let unSortedRecipes = produceUnits.map((unit) => recipes[unit.recipe]);
+  let unSortedRecipes = produceUnits
+    .filter((unit) => unit.grossOutput > 0)
+    .map((unit) => recipes[unit.recipe]);
   const rawMaterial = {}; // 原料
   // 源矿加入已排序的配方
   produceUnits
@@ -75,25 +105,25 @@ function orderRecipe(produceUnits) {
       rawMaterial[unit.item] = unit.theoryOutput;
     });
   while (unSortedRecipes.length) {
-    const failrecipes = [];
+    const failRecipes = [];
     const lastUnSortedLength = unSortedRecipes.length;
     unSortedRecipes.forEach((recipe) => {
       if (recipe.Items.find((id) => !sortedItem.has(id))) {
         // 存在未排序的原料
-        failrecipes.push(recipe);
+        failRecipes.push(recipe);
       } else {
         // 所有原料都已排序，将产物加入到已排序
         recipe.Results.forEach((id) => sortedItem.add(id));
         sortRecipes.push(recipe);
       }
     });
-    unSortedRecipes = failrecipes;
+    unSortedRecipes = failRecipes;
     console.log("unSortedRecipes:", lastUnSortedLength, unSortedRecipes.length);
     if (lastUnSortedLength === unSortedRecipes.length) {
       break;
     }
   }
-  const order = sortRecipes.filter((r) => r.Type !== -1).reverse(); // 过滤黑雾生成并倒序返回
+  const order = sortRecipes.filter((r) => r.Type !== -1).reverse(); // Recipe， 过滤黑雾生成并倒序返回
   return { order, rawMaterial };
 }
 
@@ -109,7 +139,7 @@ class MixedConveyerBeltBuleprint {
   recycleMode = "集装分拣器"; // 回收方式: "四向分流器" | "集装分拣器"
   stackCount = 4; // 堆叠数量: 1 | 2 | 4
   inserterMixLevel = 3; // 输入混带的最高级别：1-分拣器，2-高速分拣器，3-极速分拣器
-  proliferatorLevel = 0; // 喷涂：1-无，2-MK.1，3-MK.2，4-MK.3
+  proliferatorLevel = 1; // 喷涂：1-无，2-MK.1，3-MK.2，4-MK.3
   beltLevel = 2; // 传送带级别：0-黄带，1-绿带，2-蓝带
   multiple = 1; // 蓝图倍数
   height = 0; // 蓝图高度，固定值
@@ -117,31 +147,32 @@ class MixedConveyerBeltBuleprint {
   // 副产物是否可被消耗完
   // 副产物优先消耗，物流塔的优先级最高
   // 配方详情
-  // 某个带子单一物品达到最高则直接连接
   // 序号生成器
   // 计算供电站位置
   // 原料 + 中间产物 大于2才能使用混带
-  buildings = []; // 建筑单元
-  stations = []; // 物流塔单元
-  belt; // 传送带单元
   produceUnits; // 生产单元
-  order; // 配方排序
   rawMaterial; // 原料
   shareSize = 60; // 一份的大小
   produce; // 蓝图产物
+  produceId; // 产物id
   produceCount; // 产物数量
+
+  buildings = []; // 建筑单元
+  stations = []; // 物流塔单元
+  belt; // 传送带单元
+
   constructor(
-    produce,
+    produce, // string，蓝图生产目标物品
     produceCount,
     produceUnits,
     surplusList,
-    order,
-    rawMaterial
+    order, // Recipe, 订单排序
+    rawMaterial // Record<string, number> 原矿列表
   ) {
     this.produce = produce;
+    this.produceId = ITEM_NAME_MAP.get(produce).ID;
     this.produceCount = produceCount;
     this.produceUnits = produceUnits;
-    this.order = order;
     this.rawMaterial = rawMaterial;
     for (const item in surplusList) {
       this.surplus.push(item);
@@ -150,9 +181,67 @@ class MixedConveyerBeltBuleprint {
       (a, b) => Math.max(a, b.proNum),
       1
     );
-    this.buildings = order.map(() => new BuildingUnit(this));
+    console.log("produceUnits:", produceUnits);
     this.belt = new BeltUnit(this);
     this.shareSize = this.stackCount * 15;
+
+    const produceMap = produceUnits
+      .filter((unit) => unit.grossOutput > 0)
+      .reduce(
+        (a, b) => a.set(++b.recipe, b), // 这里的 recipe 是下标，比ID少1
+        new Map()
+      );
+    this.buildings = order.map(
+      (recipe) => new BuildingUnit(this, recipe, produceMap.get(recipe.ID))
+    );
+
+    // 是否有副产氢
+    const Hid = ITEM_NAME_MAP.get("氢").ID;
+    const hasSurplusH =
+      produce !== "氢" && produceUnits.find((unit) => unit.item === "氢");
+    // 副产氢是否参与生产
+    const hasItemH = !!order.find((o) => o.Items.includes(Hid));
+    // 副产氢是否足够
+    const surplusHEnough = !produceUnits.find((unit) => unit.item === "氢")
+      ?.grossOutput;
+    const overflowH = this.surplus.includes("氢");
+    console.log(
+      `产出氢: ${hasSurplusH}, 氢参与生产:${hasItemH}, 副产氢足够:${surplusHEnough}, 溢出氢:${overflowH}`
+    );
+
+    // 物流塔物品种类数：喷涂 + 产出 + 副产 + 原矿
+    const stationItems = [{ item: produce, type: 2 }]; // {item, type}, 物流塔，type 1-需求，2供应
+    if (this.proliferatorLevel > 1) { // todo: 还需加入喷涂类型，未传入
+      // 喷涂
+      stationItems.push({
+        item: PRO_LIST[this.proliferatorLevel - 2],
+        type: 1,
+      });
+    }
+    if (overflowH) {
+      stationItems.push({
+        item: "氢",
+        type: 2, // 氢溢出时供应
+      });
+    }
+    if (!surplusHEnough && !overflowH) {
+      stationItems.push({
+        item: "氢",
+        type: 1, // 副产氢不够时需求
+      });
+    }
+    // 加入副产
+    this.surplus
+      .filter((item) => item !== "氢")
+      .forEach((item) => stationItems.push({ item, type: 2 }));
+    // 加入原矿
+    for (const item in rawMaterial) {
+      stationItems.push({
+        item,
+        type: 1,
+      });
+    }
+    console.log(`需物流塔：`, stationItems);
   }
 
   /**
@@ -174,23 +263,33 @@ class MixedConveyerBeltBuleprint {
  */
 class BuildingUnit {
   buleprint;
-  // 建筑名稱
-  // id
+  factoryId;
+  itemId;
   // 角度
   // 位置: x, y
-  // 数量
   // width，只要宽度即可，高度固定，由蓝图决定
-  // 配方
-  // 输入物品：物品、数量
   // 计算输入物品位置
   // 输出物品：
   // 计算输出物品位置
   // 副产品：物品、数量
   // 计算副产品输出位置，蓝图有副产，输出到物流塔，否则输出到传送带
   // 增产 | 加速
-  recycleMode = "集装分拣器"; // 回收方式: "四向分流器" | "集装分拣器" // 分拣器方式需要堆叠后输出
-  constructor(buleprint) {
+  recycleMode = "集装分拣器"; // 回收方式: "四向分流器" | "集装分拣器" //
+  recipe; // 配方： Recipe
+  produce; // 生产要素:ProduceUnit
+  constructor(buleprint, recipe, produce) {
     this.buleprint = buleprint;
+    this.recipe = recipe;
+    this.produce = produce;
+    this.factoryId = ITEM_NAME_MAP.get(produce.factory).ID;
+    this.itemId = ITEM_NAME_MAP.get(produce.item).ID;
+    console.log(
+      `生产 ${produce.item}[${this.itemId}] ${produce.theoryOutput}个 需 ${
+        produce.factory
+      }[${this.factoryId}] ${
+        produce.factoryNumber
+      }个，原料：${recipe.Items.join()}, 产出：${recipe.Results.join()}`
+    );
   }
 }
 
@@ -199,9 +298,8 @@ class BuildingUnit {
  */
 class StationUnit {
   buleprint;
-
-  // 是否有喷涂剂
-  // 是否有副产物
+  stationsItems; // number[][], 物流塔、物品
+  stationId = 2103; // 物流塔id
   // 是否有物流塔
   // 配方
   // 建筑名稱
@@ -216,7 +314,13 @@ class StationUnit {
   // 输出物品：
   // 计算输出物品位置
   constructor(buleprint) {
+    // todo：蓝图计算物流塔分配，StationUnit 只负责生成建筑
     this.buleprint = buleprint;
+  }
+
+  // 是否有喷涂剂
+  hasProliferator() {
+    return this.buleprint.proliferatorLevel > 1;
   }
 }
 
@@ -234,7 +338,7 @@ class BeltUnit {
 
   compute() {
     const filterItems = [...PRO_LIST, ...this.buleprint.surplus];
-    const items = this.buleprint.produceUnits
+    const items = this.buleprint.produceUnits // 传送带上的一份物品
       .filter(
         (unit) =>
           !filterItems.includes(unit.item) &&
@@ -263,7 +367,7 @@ class BeltUnit {
       throw new Error("中间产物数量超过传送带最大容量。");
     }
     const beltUsage = [];
-    const beltItems = [];
+    const beltItems = []; // item[][]
     for (let i = 0; i < beltCount; i++) {
       beltItems.push([]);
       beltUsage.push(0);
