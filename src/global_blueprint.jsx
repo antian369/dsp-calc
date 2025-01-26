@@ -296,7 +296,13 @@ class MixedConveyerBeltBuleprint {
     }
     // 分配物流塔
     for (let i = 0; i < stationItems.length; i += 4) {
-      this.stations.push(new StationUnit(this, stationItems.slice(i, i + 4)));
+      this.stations.push(
+        new StationUnit(
+          this,
+          stationItems.slice(i, i + 4),
+          this.stations.length
+        )
+      );
     }
   }
 
@@ -328,6 +334,9 @@ class MixedConveyerBeltBuleprint {
     // 5. 工厂输入分拣器
     // 6. 工厂输出分拣器
     // 8. 传送带对接总线
+    // 右上角是坐标(0,0)，建筑坐标是建筑右上角的起点
+    // 区域大小为从右上角开始到最左侧建筑的开始点，到最下侧建筑的开始点，区域大小是左下建筑开始点 x+1, y+1
+    // localOffset 是建筑的起点与终点，只对传送带、分拣器有效
   }
 }
 
@@ -389,35 +398,74 @@ class BuildingUnit {
  */
 class StationUnit {
   buleprint;
+  index;
   stationId = 2103; // 物流塔id
   requireItems = []; // 需求列表
   provideItems = []; // 供应列表
+  items = [];
   // 是否有物流塔
   // 配方
   // 建筑名稱
   // id
   // 角度
   // 位置: x, y
-  // 数量
-  // width
+  width;
   // 配方
   // 输入物品：物品、数量
   // 计算输入物品位置
   // 输出物品：
   // 计算输出物品位置
-  constructor(buleprint, items) {
+  constructor(buleprint, items, index) {
     // todo：蓝图计算物流塔分配，StationUnit 只负责生成建筑
+    this.index = index;
     this.buleprint = buleprint;
     items.forEach((item) =>
       item.type === 1
         ? this.requireItems.push(item)
         : this.provideItems.push(item)
     );
+    this.items = [...this.provideItems, ...this.requireItems];
   }
 
   // 是否有喷涂剂
   hasProliferator() {
     return this.buleprint.proliferatorLevel > 1;
+  }
+
+  getLeftWidth() {
+    if (this.index === 0) {
+      let width = 0;
+      // 第一个塔左侧为喷涂出口，至少 5
+      if (this.hasProliferator()) {
+        width += 5;
+      }
+      // 如果有副产，左侧至少 3
+      if (this.provideItems.length > 0 && width < 3) {
+        width += 3;
+      }
+      // 如果无副产，而且无供应，为 3 + 第一个需求需要的爪子数量
+      if (this.provideItems.length === 0 && !this.hasProliferator()) {
+        width += this.requireItems.length;
+      }
+      return width;
+    } else {
+      const top = this.items[0].inserter.length + 3;
+      const bottom =
+        this.items.length > 1 ? this.items[1].inserter.length + 3 : 0;
+      return Math.max(top, bottom);
+    }
+  }
+
+  getRightWidth() {
+    // 右侧爪子数量
+    const top = this.items.length > 2 ? this.items[2].inserter.length + 4 : 0;
+    const bottom =
+      this.items.length > 3 ? this.items[3].inserter.length + 4 : 0;
+    return Math.max(top, bottom);
+  }
+
+  getWidth(){
+    return this.getLeftWidth() + 8 + this.getRightWidth();
   }
 
   // 计算
@@ -430,7 +478,7 @@ class StationUnit {
     );
 
     console.log(
-      "物流塔需求：",
+      `物流塔 ${this.index} 需求：`,
       this.requireItems,
       "，供应：",
       this.provideItems

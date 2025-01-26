@@ -1,7 +1,81 @@
 {
   "buildings": {
-    "传送带": {},
-    "高速传送带": {},
+    "传送带": {
+      "parameters": null,
+      "index": 0,
+      "itemId": 2001,
+      "modelIndex": 35,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 9,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "x": 9,
+          "y": 0,
+          "z": 0
+        }
+      ],
+      "yaw": [269.9729, 269.9729],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": 1,
+      "inputObjIdx": -1,
+      "outputToSlot": 1,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 1,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "传送带",
+      "attributes": {
+        "area": [1, 1]
+      }
+    },
+    "高速传送带": {
+      "parameters": null,
+      "index": 3,
+      "itemId": 2002,
+      "modelIndex": 36,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 9,
+          "y": 2,
+          "z": 0
+        },
+        {
+          "x": 9,
+          "y": 2,
+          "z": 0
+        }
+      ],
+      "yaw": [269.9752, 269.9752],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": 4,
+      "inputObjIdx": -1,
+      "outputToSlot": 1,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 1,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "高速传送带",
+      "attributes": {
+        "area": [1, 1]
+      }
+    },
     "极速传送带": {
       "parameters": null,
       "index": 3,
@@ -35,7 +109,10 @@
       "inputOffset": 0,
       "recipeId": 0,
       "filterId": 0,
-      "itemName": "极速传送带"
+      "itemName": "极速传送带",
+      "attributes": {
+        "area": [1, 1]
+      }
     },
     "分拣器": {
       "parameters": {
@@ -72,7 +149,10 @@
       "inputOffset": 0,
       "recipeId": 0,
       "filterId": 0,
-      "itemName": "分拣器"
+      "itemName": "分拣器",
+      "attributes": {
+        "area": [0, 0]
+      }
     },
     "高速分拣器": {
       "parameters": {
@@ -109,7 +189,10 @@
       "inputOffset": 0,
       "recipeId": 0,
       "filterId": 0,
-      "itemName": "高速分拣器"
+      "itemName": "高速分拣器",
+      "attributes": {
+        "area": [0, 0]
+      }
     },
     "极速分拣器": {
       "parameters": {
@@ -146,7 +229,10 @@
       "inputOffset": 0,
       "recipeId": 0,
       "filterId": 0,
-      "itemName": "极速分拣器"
+      "itemName": "极速分拣器",
+      "attributes": {
+        "area": [0, 0]
+      }
     },
     "集装分拣器": {
       "parameters": {
@@ -183,11 +269,131 @@
       "inputOffset": 0,
       "recipeId": 0,
       "filterId": 0,
-      "itemName": "集装分拣器"
+      "itemName": "集装分拣器",
+      "attributes": {
+        "area": [0, 0]
+      }
     },
-    "制造台 Mk.I": {},
-    "制造台 Mk.II": {},
-    "制造台 Mk.III": {},
+    "制造台 Mk.I": {
+      "parameters": {
+        "acceleratorMode": 0
+      },
+      "index": 3,
+      "itemId": 2303,
+      "modelIndex": 65,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 17,
+          "y": 1,
+          "z": 0
+        },
+        {
+          "x": 17,
+          "y": 1,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 0,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 0,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "制造台 Mk.I",
+      "attributes": {
+        "area": [4, 4]
+      }
+    },
+    "制造台 Mk.II": {
+      "parameters": {
+        "acceleratorMode": 0
+      },
+      "index": 4,
+      "itemId": 2304,
+      "modelIndex": 66,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 12,
+          "y": 1,
+          "z": 0
+        },
+        {
+          "x": 12,
+          "y": 1,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 0,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 0,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "制造台 Mk.II",
+      "attributes": {
+        "area": [4, 4]
+      }
+    },
+    "制造台 Mk.III": {
+      "parameters": {
+        "acceleratorMode": 0
+      },
+      "index": 2,
+      "itemId": 2305,
+      "modelIndex": 67,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 7,
+          "y": 1,
+          "z": 0
+        },
+        {
+          "x": 7,
+          "y": 1,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 0,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 0,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "制造台 Mk.III",
+      "attributes": {
+        "area": [4, 4]
+      }
+    },
     "重组式制造台": {
       "parameters": {
         "acceleratorMode": 0
@@ -223,10 +429,131 @@
       "inputOffset": 0,
       "recipeId": 107,
       "filterId": 0,
-      "itemName": "重组式制造台"
+      "itemName": "重组式制造台",
+      "attributes": {
+        "area": [4, 4]
+      }
     },
-    "电弧熔炉": {},
-    "位面熔炉": {},
+    "四向分流器": {
+      "parameters": {
+        "priority": [false, false, false, false]
+      },
+      "index": 0,
+      "itemId": 2020,
+      "modelIndex": 38,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 14,
+      "inputFromSlot": 15,
+      "outputFromSlot": 15,
+      "inputToSlot": 14,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "四向分流器",
+      "attributes": {
+        "area": [2, 2]
+      }
+    },
+    "电弧熔炉": {
+      "parameters": {
+        "acceleratorMode": 0
+      },
+      "index": 1,
+      "itemId": 2302,
+      "modelIndex": 62,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 26,
+          "y": 1,
+          "z": 0
+        },
+        {
+          "x": 26,
+          "y": 1,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 0,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 0,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "电弧熔炉",
+      "attributes": {
+        "area": [3, 3]
+      }
+    },
+    "位面熔炉": {
+      "parameters": {
+        "acceleratorMode": 0
+      },
+      "index": 5,
+      "itemId": 2315,
+      "modelIndex": 194,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 22,
+          "y": 1,
+          "z": 0
+        },
+        {
+          "x": 22,
+          "y": 1,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 0,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 0,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "位面熔炉",
+      "attributes": {
+        "area": [3, 3]
+      }
+    },
     "负熵熔炉": {
       "parameters": {
         "acceleratorMode": 0
@@ -262,9 +589,51 @@
       "inputOffset": 0,
       "recipeId": 3,
       "filterId": 0,
-      "itemName": "负熵熔炉"
+      "itemName": "负熵熔炉",
+      "attributes": {
+        "area": [3, 3]
+      }
     },
-    "化工厂": {},
+    "化工厂": {
+      "parameters": {
+        "acceleratorMode": 0
+      },
+      "index": 0,
+      "itemId": 2309,
+      "modelIndex": 64,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 0,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 0,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "化工厂",
+      "attributes": {
+        "area": [8, 5]
+      }
+    },
     "量子化工厂": {
       "parameters": {
         "acceleratorMode": 0
@@ -300,7 +669,10 @@
       "inputOffset": 0,
       "recipeId": 23,
       "filterId": 0,
-      "itemName": "量子化工厂"
+      "itemName": "量子化工厂",
+      "attributes": {
+        "area": [8, 5]
+      }
     },
     "原油精炼厂": {
       "parameters": {
@@ -337,7 +709,10 @@
       "inputOffset": 0,
       "recipeId": 16,
       "filterId": 0,
-      "itemName": "原油精炼厂"
+      "itemName": "原油精炼厂",
+      "attributes": {
+        "area": [7, 4]
+      }
     },
     "微型粒子对撞机": {
       "parameters": {
@@ -374,7 +749,10 @@
       "inputOffset": 0,
       "recipeId": 74,
       "filterId": 0,
-      "itemName": "微型粒子对撞机"
+      "itemName": "微型粒子对撞机",
+      "attributes": {
+        "area": [10, 6]
+      }
     },
     "喷涂机": {
       "parameters": null,
@@ -409,9 +787,52 @@
       "inputOffset": 0,
       "recipeId": 0,
       "filterId": 0,
-      "itemName": "喷涂机"
+      "itemName": "喷涂机",
+      "attributes": {
+        "area": [5, 2]
+      }
     },
-    "矩阵研究站": {},
+    "矩阵研究站": {
+      "parameters": {
+        "researchMode": 0,
+        "acceleratorMode": 0
+      },
+      "index": 0,
+      "itemId": 2901,
+      "modelIndex": 70,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 14,
+      "inputFromSlot": 15,
+      "outputFromSlot": 15,
+      "inputToSlot": 14,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "矩阵研究站",
+      "attributes": {
+        "area": [6, 6, 3]
+      }
+    },
     "自演化研究站": {
       "parameters": {
         "researchMode": 1,
@@ -448,9 +869,142 @@
       "inputOffset": 0,
       "recipeId": 18,
       "filterId": 0,
-      "itemName": "自演化研究站"
+      "itemName": "自演化研究站",
+      "attributes": {
+        "area": [6, 6, 3]
+      }
     },
-    "行星内物流运输站": {},
+    "行星内物流运输站": {
+      "parameters": {
+        "storage": [
+          {
+            "itemId": 0,
+            "localRole": 0,
+            "remoteRole": 0,
+            "max": 0,
+            "lockAmount": 0
+          },
+          {
+            "itemId": 0,
+            "localRole": 0,
+            "remoteRole": 0,
+            "max": 0,
+            "lockAmount": 0
+          },
+          {
+            "itemId": 0,
+            "localRole": 0,
+            "remoteRole": 0,
+            "max": 0,
+            "lockAmount": 0
+          },
+          {
+            "itemId": 0,
+            "localRole": 0,
+            "remoteRole": 0,
+            "max": 0,
+            "lockAmount": 0
+          }
+        ],
+        "slots": [
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          },
+          {
+            "dir": 0,
+            "storageIdx": 0
+          }
+        ],
+        "workEnergyPerTick": 12,
+        "tripRangeOfDrones": 180,
+        "tripRangeOfShips": 10000,
+        "includeOrbitCollector": true,
+        "warpEnableDistance": 12,
+        "warperNecessary": true,
+        "deliveryAmountOfDrones": 10,
+        "deliveryAmountOfShips": 100,
+        "pilerCount": 0,
+        "miningSpeed": 0,
+        "droneAutoReplenish": false,
+        "shipAutoReplenish": false
+      },
+      "index": 2,
+      "itemId": 2103,
+      "modelIndex": 49,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 0,
+          "y": 2,
+          "z": 0
+        },
+        {
+          "x": 0,
+          "y": 2,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 0,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 0,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "行星内物流运输站",
+      "attributes": {
+        "area": [8, 8]
+      }
+    },
     "星际物流运输站": {
       "parameters": {
         "storage": [
@@ -584,7 +1138,48 @@
       "inputOffset": 0,
       "recipeId": 0,
       "filterId": 0,
-      "itemName": "星际物流运输站"
+      "itemName": "星际物流运输站",
+      "attributes": {
+        "area": [8, 8]
+      }
+    },
+    "电力感应塔": {
+      "parameters": null,
+      "index": 1,
+      "itemId": 2201,
+      "modelIndex": 44,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": 3,
+          "y": 1,
+          "z": 0
+        },
+        {
+          "x": 3,
+          "y": 1,
+          "z": 0
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": -1,
+      "outputToSlot": 0,
+      "inputFromSlot": 0,
+      "outputFromSlot": 0,
+      "inputToSlot": 0,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "电力感应塔",
+      "attributes": {
+        "area": [1, 1]
+      }
     }
   },
   "inserterSettings": [
@@ -594,17 +1189,17 @@
       "length": 1
     },
     {
-      "share": 18,
+      "share": 12,
       "level": 2,
       "length": 2
     },
     {
-      "share": 12,
+      "share": 8,
       "level": 2,
       "length": 3
     },
     {
-      "share": 8,
+      "share": 12,
       "level": 1,
       "length": 1
     },
@@ -619,7 +1214,7 @@
       "length": 3
     },
     {
-      "share": 4,
+      "share": 6,
       "level": 0,
       "length": 1
     },
