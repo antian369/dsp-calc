@@ -1194,13 +1194,18 @@
       "length": 2
     },
     {
+      "share": 12,
+      "level": 1,
+      "length": 1
+    },
+    {
       "share": 8,
       "level": 2,
       "length": 3
     },
     {
-      "share": 12,
-      "level": 1,
+      "share": 6,
+      "level": 0,
       "length": 1
     },
     {
@@ -1212,11 +1217,6 @@
       "share": 4,
       "level": 1,
       "length": 3
-    },
-    {
-      "share": 6,
-      "level": 0,
-      "length": 1
     },
     {
       "share": 3,
