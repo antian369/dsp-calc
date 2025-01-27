@@ -196,11 +196,13 @@ class MixedConveyerBeltBuleprint {
   surplusCount = 0; // 副产物溢出数量，负数表示不足，正数表示溢出，0表示刚好够用
   surplusJoinProduct = false; // 副产物是否参与生产
   extraBeltItem; // 额外传送带物品
-  surplusHSuply = 0; // 副产氢供给情况: 0-无氢， 1-产出氢，但是不参与生产，2-产出氢参与生产，数量正好，3-产出氢参与生产，数量不够， 4-氢参与生产，数量溢出，5-氢做为普通原料
   // 配方详情
   // 序号生成器
   // 计算供电站位置
-  // 原料 + 中间产物 大于2才能使用混带
+  rowCount = 1; // 行数
+  buildingsRow = []; // 建筑行数，一行一个数组。下标为行数，值为建筑单元，建筑的方向由所以的行数决定，下标是双行的1，单数数行为-1。
+  // 传送带方向：1-逆时针，-1-顺时针
+
   produceUnits; // 生产单元
   rawMaterial; // 原料
   shareSize = 60; // 一份的大小
@@ -218,13 +220,15 @@ class MixedConveyerBeltBuleprint {
     produceUnits,
     surplusList,
     order, // Recipe, 订单排序
-    rawMaterial // Record<string, number> 原矿列表
+    rawMaterial, // Record<string, number> 原矿列表
+    rowCount = 1 // 行数
   ) {
     this.produce = produce;
     this.produceId = ITEM_NAME_MAP.get(produce).ID;
     this.produceCount = produceCount;
     this.produceUnits = produceUnits;
     this.rawMaterial = rawMaterial;
+    this.rowCount = rowCount;
     this.proliferatorLevel = Math.min(
       produceUnits.reduce((a, b) => Math.max(a, b.proNum), 0),
       3
@@ -309,6 +313,36 @@ class MixedConveyerBeltBuleprint {
     console.log("传送带利用率：", this.belt.beltUsageRate);
     this.stations.forEach((station) => station.compute());
     this.buildings.forEach((building) => building.compute());
+    // 将建筑分配到行：物流站必须在第一行，一个建筑单元不可跨行
+    // 分配原则：先计算总宽度，除以行数向上取整是一行的最大宽度
+    // 当超过宽度时，此行结束，下一个建筑从下一行开始
+    const totalWidth = this.stations.reduce((a, b) => a + b.width, 0) + this.buildings.reduce((a, b) => a + b.width, 0);
+    for (let i = 0; i < this.rowCount; i++) {
+      this.buildingsRow.push([]);
+    }
+    let aggWidth = totalWidth / this.rowCount;
+    let i = 0,
+      rowWidth = 0;
+    this.buildingsRow[0].push(...this.stations);
+    rowWidth = this.stations.reduce((a, b) => a + b.width, 0);
+    if (rowWidth > aggWidth) {
+      console.log(`第${i}行，宽度：${rowWidth}, aggWidth:${aggWidth}, 建筑：`, this.buildingsRow[i]);
+      aggWidth = (aggWidth + rowWidth) / 2;
+      i++;
+      rowWidth = 0;
+    }
+    this.buildings.forEach((building) => {
+      building.setDirection(i); //
+      this.buildingsRow[i].push(building);
+      rowWidth += building.width;
+      if (rowWidth > aggWidth) {
+        console.log(`第${i}行，宽度：${rowWidth}, aggWidth:${aggWidth}, 建筑：`, this.buildingsRow[i]);
+        aggWidth = (aggWidth + rowWidth) / 2;
+        i++;
+        rowWidth = 0;
+      }
+    });
+    console.log(`第${i}行，宽度：${rowWidth}, aggWidth:${aggWidth}, 建筑：`, this.buildingsRow[i]);
   }
 
   /**
@@ -344,6 +378,7 @@ class BuildingUnit {
   itemId;
   inserters = [];
   building;
+  width;
   // 角度
   // 位置: x, y
   // width，只要宽度即可，高度固定，由蓝图决定
@@ -353,6 +388,8 @@ class BuildingUnit {
   // 副产品：物品、数量
   // 计算副产品输出位置，蓝图有副产，输出到物流塔，否则输出到传送带
   // 增产 | 加速
+  direction = 1; // 方向：1-逆时针，-1-顺时针
+  // 单元内传送带和建筑的方向相反时，为镜像反向
   recycleMode = "集装分拣器"; // 回收方式: "四向分流器" | "集装分拣器" //
   recipe; // 配方： Recipe
   produce; // 生产要素:ProduceUnit
@@ -371,19 +408,26 @@ class BuildingUnit {
     );
   }
 
+  setDirection(rowNumber) {
+    this.direction = rowNumber % 2 === 0 ? 1 : -1;
+  }
+
   compute() {
     this.inserters = getInserterScheme(Math.ceil(this.produce.grossOutput / this.buleprint.shareSize));
     this.itemId = ITEM_NAME_MAP.get(this.produce.item).ID;
-    console.log(`建筑：${this.produce.factory}, 输出：${this.produce.item}, 副产：${this.buleprint.surplus}, 宽度：${this.getWidth()}, 分拣器：`, this.inserters);
-  }
-
-  getWidth() {
+    // 计算宽度
     if (this.buleprint.recycleMode === "集装分拣器") {
-      // 与建筑同宽
-      return this.produce.factoryNumber * this.building.attributes.area[0];
+      if (["矩阵研究站", "自演化研究站"].includes(this.produce.factory)) {
+        this.width = this.building.attributes.area[0] + 1; // 研究站可堆叠
+      } else {
+        // 与建筑同宽
+        this.width = this.produce.factoryNumber * this.building.attributes.area[0] + 1; // 加1格，传送带转到左上
+      }
     } else {
-      return this.buleprint.width;
+      this.width = this.buleprint.width;
     }
+
+    console.log(`建筑：${this.produce.factory}, 输出：${this.produce.item}, 副产：${this.buleprint.surplus}, 宽度：${this.width}, 分拣器：`, this.inserters);
   }
 
   getSurplus() {
@@ -472,18 +516,17 @@ class StationUnit {
     }
   }
 
-  getWidth() {
-    return this.getLeftWidth() + 8 + this.getRightWidth();
-  }
-
   // 计算
   compute() {
-    this.requireItems.forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item])));
+    this.requireItems
+      .filter((item) => !PRO_LIST.includes(item.item))
+      .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item])));
     this.provideItems
       .filter((item) => item.item !== this.buleprint.produce) // 主产物不分配分拣器
       .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item])));
+    this.width = this.getLeftWidth() + 8 + this.getRightWidth();
     console.log(
-      `物流塔 ${this.index} 宽 ${this.getWidth()}-(${this.getLeftWidth()}, ${this.getRightWidth()}) 需求：`,
+      `物流塔 ${this.index} 宽 ${this.width}-(${this.getLeftWidth()}, ${this.getRightWidth()}) 需求：`,
       this.requireItems,
       "，供应：",
       this.provideItems
@@ -514,7 +557,10 @@ class BeltUnit {
           if (this.buleprint.surplusJoinProduct) {
             return {
               item: unit.item,
-              share: Math.max((unit.theoryOutput - (this.buleprint.surplusCount > 0 ? this.buleprint.surplusCount : 0)) / this.buleprint.shareSize, 2), // 减去溢出部分是总线上的数量
+              share: Math.max(
+                Math.ceil((unit.theoryOutput - (this.buleprint.surplusCount > 0 ? this.buleprint.surplusCount : 0)) / this.buleprint.shareSize),
+                2
+              ), // 减去溢出部分是总线上的数量
             };
           }
         } else {
