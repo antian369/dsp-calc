@@ -1,5 +1,5 @@
 import structuredClone from '@ungap/structured-clone';
-import {useContext} from 'react';
+import {useContext, useRef} from 'react';
 import {GlobalStateContext, SchemeDataSetterContext, SettingsSetterContext} from './contexts';
 import {ItemIcon} from './icon';
 import {NplRows} from './natural_production_line';
@@ -351,7 +351,16 @@ export function Result({needs_list, set_needs_list}) {
         for (const item in produceUnit.sideProducts) {
             produceUnit.theoryOutput += produceUnit.sideProducts[item]; // 输出数量+副产数量
         }
-    }    
+    } 
+    
+    const textareaRef = useRef(null);
+    
+    const handleGenerate = (allProduceUnits, surplusList, produces) => {
+        const blueprintStr = generateBlueprint(allProduceUnits, surplusList, produces);
+        if (textareaRef.current) {
+            textareaRef.current.value = blueprintStr;
+        }
+    };   
 
     for (let NPId in natural_production_line) {
         let recipe = game_data.recipe_data[item_data[natural_production_line[NPId]["目标物品"]][natural_production_line[NPId]["配方id"]]];
@@ -464,11 +473,13 @@ export function Result({needs_list, set_needs_list}) {
                 </>}
 
             {/* add by lian.zt 生成蓝图 */}
-            {produceUnits.length > 0 &&
+            {produceUnits.length > 0 && <div>
                 <button className="ms-2 btn btn-outline-primary text-nowrap mineralize-btn"
-                    onClick={() => generateBlueprint(produceUnits, lp_surplus_list, needs_list)}>
+                    onClick={() => handleGenerate(produceUnits, lp_surplus_list, needs_list)}>
                 <div>生成蓝图</div>
-            </button>}
+                </button>                
+                <div><textarea ref={textareaRef}rows="10" cols="20" readOnly/></div>  
+            </div>}
         </div>
     </div>;
 }

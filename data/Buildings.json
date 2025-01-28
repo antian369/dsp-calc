@@ -2,7 +2,7 @@
   "buildings": {
     "传送带": {
       "parameters": null,
-      "index": 0,
+      "index": -1,
       "itemId": 2001,
       "modelIndex": 35,
       "areaIndex": 0,
@@ -35,12 +35,12 @@
       "filterId": 0,
       "itemName": "传送带",
       "attributes": {
-        "area": [1, 1]
+        "area": [0.5, 0.5]
       }
     },
     "高速传送带": {
       "parameters": null,
-      "index": 3,
+      "index": -1,
       "itemId": 2002,
       "modelIndex": 36,
       "areaIndex": 0,
@@ -73,12 +73,12 @@
       "filterId": 0,
       "itemName": "高速传送带",
       "attributes": {
-        "area": [1, 1]
+        "area": [0.5, 0.5]
       }
     },
     "极速传送带": {
       "parameters": null,
-      "index": 3,
+      "index": -1,
       "itemId": 2003,
       "modelIndex": 37,
       "areaIndex": 0,
@@ -111,14 +111,14 @@
       "filterId": 0,
       "itemName": "极速传送带",
       "attributes": {
-        "area": [1, 1]
+        "area": [0.5, 0.5]
       }
     },
     "分拣器": {
       "parameters": {
         "length": 3
       },
-      "index": 1513,
+      "index": -1,
       "itemId": 2011,
       "modelIndex": 41,
       "areaIndex": 0,
@@ -158,7 +158,7 @@
       "parameters": {
         "length": 3
       },
-      "index": 660,
+      "index": -1,
       "itemId": 2012,
       "modelIndex": 42,
       "areaIndex": 0,
@@ -198,7 +198,7 @@
       "parameters": {
         "length": 1
       },
-      "index": 625,
+      "index": -1,
       "itemId": 2013,
       "modelIndex": 43,
       "areaIndex": 0,
@@ -238,7 +238,7 @@
       "parameters": {
         "length": 3
       },
-      "index": 28,
+      "index": -1,
       "itemId": 2014,
       "modelIndex": 483,
       "areaIndex": 0,
@@ -278,7 +278,7 @@
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 3,
+      "index": -1,
       "itemId": 2303,
       "modelIndex": 65,
       "areaIndex": 0,
@@ -311,14 +311,14 @@
       "filterId": 0,
       "itemName": "制造台 Mk.I",
       "attributes": {
-        "area": [4, 4]
+        "area": [2, 2]
       }
     },
     "制造台 Mk.II": {
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 4,
+      "index": -1,
       "itemId": 2304,
       "modelIndex": 66,
       "areaIndex": 0,
@@ -351,14 +351,14 @@
       "filterId": 0,
       "itemName": "制造台 Mk.II",
       "attributes": {
-        "area": [4, 4]
+        "area": [2, 2]
       }
     },
     "制造台 Mk.III": {
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 2,
+      "index": -1,
       "itemId": 2305,
       "modelIndex": 67,
       "areaIndex": 0,
@@ -391,14 +391,14 @@
       "filterId": 0,
       "itemName": "制造台 Mk.III",
       "attributes": {
-        "area": [4, 4]
+        "area": [2, 2]
       }
     },
     "重组式制造台": {
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 730,
+      "index": -1,
       "itemId": 2318,
       "modelIndex": 456,
       "areaIndex": 0,
@@ -431,14 +431,14 @@
       "filterId": 0,
       "itemName": "重组式制造台",
       "attributes": {
-        "area": [4, 4]
+        "area": [2, 2]
       }
     },
     "四向分流器": {
       "parameters": {
         "priority": [false, false, false, false]
       },
-      "index": 0,
+      "index": -1,
       "itemId": 2020,
       "modelIndex": 38,
       "areaIndex": 0,
@@ -478,7 +478,7 @@
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 1,
+      "index": -1,
       "itemId": 2302,
       "modelIndex": 62,
       "areaIndex": 0,
@@ -511,14 +511,14 @@
       "filterId": 0,
       "itemName": "电弧熔炉",
       "attributes": {
-        "area": [3, 3]
+        "area": [1.5, 1.5]
       }
     },
     "位面熔炉": {
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 5,
+      "index": -1,
       "itemId": 2315,
       "modelIndex": 194,
       "areaIndex": 0,
@@ -551,14 +551,14 @@
       "filterId": 0,
       "itemName": "位面熔炉",
       "attributes": {
-        "area": [3, 3]
+        "area": [1.5, 1.5]
       }
     },
     "负熵熔炉": {
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 1060,
+      "index": -1,
       "itemId": 2319,
       "modelIndex": 457,
       "areaIndex": 0,
@@ -591,14 +591,14 @@
       "filterId": 0,
       "itemName": "负熵熔炉",
       "attributes": {
-        "area": [3, 3]
+        "area": [1.5, 1.5]
       }
     },
     "化工厂": {
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 0,
+      "index": -1,
       "itemId": 2309,
       "modelIndex": 64,
       "areaIndex": 0,
@@ -631,14 +631,14 @@
       "filterId": 0,
       "itemName": "化工厂",
       "attributes": {
-        "area": [8, 5]
+        "area": [4, 2]
       }
     },
     "量子化工厂": {
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 1175,
+      "index": -1,
       "itemId": 2317,
       "modelIndex": 376,
       "areaIndex": 0,
@@ -671,14 +671,14 @@
       "filterId": 0,
       "itemName": "量子化工厂",
       "attributes": {
-        "area": [8, 5]
+        "area": [4, 2]
       }
     },
     "原油精炼厂": {
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 1203,
+      "index": -1,
       "itemId": 2308,
       "modelIndex": 63,
       "areaIndex": 0,
@@ -711,14 +711,14 @@
       "filterId": 0,
       "itemName": "原油精炼厂",
       "attributes": {
-        "area": [7, 4]
+        "area": [3.5, 1.5]
       }
     },
     "微型粒子对撞机": {
       "parameters": {
         "acceleratorMode": 0
       },
-      "index": 1500,
+      "index": -1,
       "itemId": 2310,
       "modelIndex": 69,
       "areaIndex": 0,
@@ -751,12 +751,12 @@
       "filterId": 0,
       "itemName": "微型粒子对撞机",
       "attributes": {
-        "area": [10, 6]
+        "area": [5.5, 2.5]
       }
     },
     "喷涂机": {
       "parameters": null,
-      "index": 1781,
+      "index": -1,
       "itemId": 2313,
       "modelIndex": 120,
       "areaIndex": 0,
@@ -789,15 +789,15 @@
       "filterId": 0,
       "itemName": "喷涂机",
       "attributes": {
-        "area": [5, 2]
+        "area": [3, 1]
       }
     },
     "矩阵研究站": {
       "parameters": {
-        "researchMode": 0,
+        "researchMode": 1,
         "acceleratorMode": 0
       },
-      "index": 0,
+      "index": -1,
       "itemId": 2901,
       "modelIndex": 70,
       "areaIndex": 0,
@@ -830,7 +830,7 @@
       "filterId": 0,
       "itemName": "矩阵研究站",
       "attributes": {
-        "area": [6, 6, 3]
+        "area": [3, 3, 3]
       }
     },
     "自演化研究站": {
@@ -838,7 +838,7 @@
         "researchMode": 1,
         "acceleratorMode": 0
       },
-      "index": 1794,
+      "index": -1,
       "itemId": 2902,
       "modelIndex": 455,
       "areaIndex": 0,
@@ -871,7 +871,7 @@
       "filterId": 0,
       "itemName": "自演化研究站",
       "attributes": {
-        "area": [6, 6, 3]
+        "area": [3, 3, 3]
       }
     },
     "行星内物流运输站": {
@@ -969,7 +969,7 @@
         "droneAutoReplenish": false,
         "shipAutoReplenish": false
       },
-      "index": 2,
+      "index": -1,
       "itemId": 2103,
       "modelIndex": 49,
       "areaIndex": 0,
@@ -1002,7 +1002,7 @@
       "filterId": 0,
       "itemName": "行星内物流运输站",
       "attributes": {
-        "area": [8, 8]
+        "area": [4, 4]
       }
     },
     "星际物流运输站": {
@@ -1107,7 +1107,7 @@
         "droneAutoReplenish": false,
         "shipAutoReplenish": false
       },
-      "index": 1144,
+      "index": -1,
       "itemId": 2104,
       "modelIndex": 50,
       "areaIndex": 0,
@@ -1140,12 +1140,12 @@
       "filterId": 0,
       "itemName": "星际物流运输站",
       "attributes": {
-        "area": [8, 8]
+        "area": [4, 4]
       }
     },
     "电力感应塔": {
       "parameters": null,
-      "index": 1,
+      "index": -1,
       "itemId": 2201,
       "modelIndex": 44,
       "areaIndex": 0,
@@ -1178,7 +1178,7 @@
       "filterId": 0,
       "itemName": "电力感应塔",
       "attributes": {
-        "area": [1, 1]
+        "area": [0.5, 0.5]
       }
     }
   },

@@ -32,6 +32,7 @@ interface Recipe {
 
 import { recipes, items } from "../data/Vanilla.json";
 import { buildings, inserterSettings } from "../data/Buildings.json";
+import { BlueprintBuilder } from "./buleprint/builder";
 
 const RAW_FACTORY = ["采矿机", "大型采矿机", "轨道采集器", "行星基地", "抽水站", "射线接收站", "原油萃取站"]; // 产出原矿的工石
 
@@ -87,6 +88,12 @@ export function generateBlueprint(allProduceUnits, surplusList, produces) {
     console.log("订单:", order);
     const buleprint = new MixedConveyerBeltBuleprint(Object.keys(produces)[0], Object.values(produces)[0], produceUnits, surplusList, order, rawMaterial);
     buleprint.compute();
+
+    const bp = new BlueprintBuilder("新蓝图", buleprint.generate());
+    const str = bp.toStr();
+    // 将s加入到剪切板
+    // navigator.clipboard.writeText(str);
+    return str;
   } catch (e) {
     console.error(e.stack);
     alert(e.message);
@@ -101,7 +108,7 @@ function round(obj) {
   for (const k in obj) {
     switch (typeof obj[k]) {
       case "number":
-        obj[k] = Math.round(obj[k]);
+        obj[k] = k === "factoryNumber" ? Math.ceil(Number(obj[k].toFixed(2))) : Math.round(obj[k]);
         break;
       case "object":
         round(obj[k]);
@@ -214,6 +221,8 @@ class MixedConveyerBeltBuleprint {
   stations = []; // 物流塔单元
   belt; // 传送带单元
 
+  matrix; // 地图二维数组
+
   constructor(
     produce, // string，蓝图生产目标物品
     produceCount,
@@ -277,18 +286,18 @@ class MixedConveyerBeltBuleprint {
       this.proliferatorLevel > 0
         ? {
             item: PRO_LIST[this.proliferatorLevel - 1],
-            type: 1,
+            type: 2,
           }
         : {
-            type: 1,
+            type: 2,
           }, //第一个固定是喷涂，如果未选择喷涂留空
-      { item: produce, type: 2 },
+      { item: produce, type: 1 },
     ]; // {item, type}, 物流塔，type 1-需求，2供应
     // 加入副产
     if (this.surplus && this.surplusCount !== 0) {
       stationItems.push({
         item: this.surplus,
-        type: this.surplusCount > 0 ? 2 : 1, // 氢溢出时供应
+        type: this.surplusCount > 0 ? 1 : 2, // 氢溢出时供应
       });
     }
     // 加入原矿
@@ -296,7 +305,7 @@ class MixedConveyerBeltBuleprint {
       item !== this.surplus &&
         stationItems.push({
           item,
-          type: 1,
+          type: 2,
         });
     }
     // 分配物流塔
@@ -323,7 +332,7 @@ class MixedConveyerBeltBuleprint {
     let aggWidth = totalWidth / this.rowCount;
     let i = 0,
       rowWidth = 0;
-    this.buildingsRow[0].push(...this.stations);
+    this.buildingsRow[0].unshift(...this.stations);
     rowWidth = this.stations.reduce((a, b) => a + b.width, 0);
     if (rowWidth > aggWidth) {
       console.log(`第${i}行，宽度：${rowWidth}, aggWidth:${aggWidth}, 建筑：`, this.buildingsRow[i]);
@@ -333,7 +342,7 @@ class MixedConveyerBeltBuleprint {
     }
     this.buildings.forEach((building) => {
       building.setDirection(i); //
-      this.buildingsRow[i].push(building);
+      this.buildingsRow[i].unshift(building);
       rowWidth += building.width;
       if (rowWidth > aggWidth) {
         console.log(`第${i}行，宽度：${rowWidth}, aggWidth:${aggWidth}, 建筑：`, this.buildingsRow[i]);
@@ -346,26 +355,57 @@ class MixedConveyerBeltBuleprint {
   }
 
   /**
-   * 将主要建筑画到二维数组里
+   * 生成地图二维数组
    */
-  draw() {
+  generate() {
     // 1. 物流塔、输出传送带
     // 2. 工厂建筑、输出传送带
     // 3. 总线传送带
     // 4. 喷涂机
     // 5. 电线杆
-  }
-
-  /**
-   * 生成
-   */
-  generate() {
     // 5. 工厂输入分拣器
     // 6. 工厂输出分拣器
     // 8. 传送带对接总线
     // 右上角是坐标(0,0)，建筑坐标是建筑右上角的起点
     // 区域大小为从右上角开始到最左侧建筑的开始点，到最下侧建筑的开始点，区域大小是左下建筑开始点 x+1, y+1
     // localOffset 是建筑的起点与终点，只对传送带、分拣器有效
+
+    // 找到最长的行
+    const maxWidth = this.buildingsRow.map((unit) => unit.reduce((a, b) => a + b.width, 0)).reduce((a, b) => Math.max(a, b), 0);
+    const matrixBlock = this.buildingsRow.map((buildings) => {
+      // 初始化一行 11 x maxRow 的二维数组
+      const rowMatrix = Array.from({ length: 11 }, () => Array(maxWidth).fill(null));
+      let beginX = 0;
+      buildings.forEach((building) => {
+        building.generate(rowMatrix, beginX);
+        beginX += building.width;
+      });
+      return rowMatrix;
+    });
+
+    // 每一行坐标都是从0计算，然后合并到 matrix 中时增加偏移量即可。
+    const matrix = [];
+
+    matrixBlock.forEach((rowMatrix, i) => {
+      matrix.push(...rowMatrix);
+      rowMatrix.forEach((row) =>
+        console.log(
+          row
+            .map((factory) => {
+              if (!factory) {
+                return "口";
+              }
+              if (factory.length) {
+                return factory[0]?.itemName?.[0] || "口";
+              }
+              return factory?.itemName?.[0] || "口";
+            })
+            .join("")
+        )
+      ); // 打印一行
+      console.log(`===============${i}===================`);
+    });
+    return matrix;
   }
 }
 
@@ -377,7 +417,7 @@ class BuildingUnit {
   factoryId;
   itemId;
   inserters = [];
-  building;
+  factories = []; // 建筑列表
   width;
   // 角度
   // 位置: x, y
@@ -399,7 +439,6 @@ class BuildingUnit {
     this.produce = produce;
     this.factoryId = ITEM_NAME_MAP.get(produce.factory).ID;
     this.itemId = ITEM_NAME_MAP.get(produce.item).ID;
-    this.building = getBuildingInfo(this.produce.factory);
 
     console.log(
       `生产 ${produce.item}[${this.itemId}] ${produce.theoryOutput}个 需 ${produce.factory}[${this.factoryId}] ${
@@ -418,13 +457,15 @@ class BuildingUnit {
     // 计算宽度
     if (this.buleprint.recycleMode === "集装分拣器") {
       if (["矩阵研究站", "自演化研究站"].includes(this.produce.factory)) {
-        this.width = this.building.attributes.area[0] + 1; // 研究站可堆叠
+        this.width = buildings[this.produce.factory].attributes.area[0] * 2 + 1; // 研究站可堆叠
+      } else if (["微型粒子对撞机"].includes(this.produce.factory)) {
+        this.width = this.produce.factoryNumber * (buildings[this.produce.factory].attributes.area[0] * 2 + 1) + 1; // 加1格输出传送带，和1格副产带
       } else {
         // 与建筑同宽
-        this.width = this.produce.factoryNumber * this.building.attributes.area[0] + 1; // 加1格，传送带转到左上
+        this.width = this.produce.factoryNumber * buildings[this.produce.factory].attributes.area[0] * 2 + 1; // 加1格，传送带转到左上
       }
     } else {
-      this.width = this.buleprint.width;
+      this.width = this.buleprint.width * 2;
     }
 
     console.log(`建筑：${this.produce.factory}, 输出：${this.produce.item}, 副产：${this.buleprint.surplus}, 宽度：${this.width}, 分拣器：`, this.inserters);
@@ -435,6 +476,100 @@ class BuildingUnit {
       return this.buleprint.surplusId;
     }
   }
+
+  // 生成研究站
+  generateLab(matrix, beginX) {
+    // 对于建筑来讲，从传送带往下开始
+    let beginY = this.buleprint.belt.belts.length;
+    // 生成上方传送带
+    // 生成建筑
+    const factoryInfo = buildings[this.produce.factory];
+    let lastFactory;
+    for (let i = 0; i < this.produce.factoryNumber; i++) {
+      // 建筑是一个方形，将矩阵中相应位置填入建筑
+      const factoryObj = getBuildingInfo(this.produce.factory);
+      if (lastFactory) {
+        factoryObj.inputObjIdx = lastFactory; // 输入
+      }
+      factoryObj.recipeId = this.recipe.ID; // 配方id
+      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
+      factoryObj.localOffset[0].z = factoryObj.attributes.area[2] * i;
+      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[1].z = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
+      factoryObj.localOffset[1].z = factoryObj.attributes.area[2] * i;
+      this.factories.push(factoryObj);
+      lastFactory = factoryObj;
+    }
+    // 研究站是垂直的，只生成第一个坐标即可
+    for (let x = beginX; x < beginX + factoryInfo.attributes.area[0] * 2; x++) {
+      for (let y = beginY; y < beginY + factoryInfo.attributes.area[1] * 2; y++) {
+        matrix[y][x] = this.factories;
+      }
+    }
+    beginY += factoryInfo.attributes.area[1] * 2;
+    // 生成下方传送带
+    // 生成分拣器
+    // 生成回路
+  }
+
+  // 生成粒子对撞机
+  generateHadronCollider(matrix, beginX) {}
+
+  // 生成原油精炼厂
+  generateOilRefinery(matrix, beginX) {}
+
+  // 生成化工厂
+  ategenerChemicalPlant(matrix, beginX) {}
+
+  generateDefault(matrix, beginX) {
+    // 对于建筑来讲，从传送带往下开始
+    let beginY = this.buleprint.belt.belts.length;
+    // 生成上方传送带
+    // 生成建筑
+    const factoryInfo = buildings[this.produce.factory];
+    for (let i = 0; i < this.produce.factoryNumber; i++) {
+      // 建筑是一个方形，将矩阵中相应位置填入建筑
+      const factoryObj = getBuildingInfo(this.produce.factory);
+      factoryObj.recipeId = this.recipe.ID; // 配方id
+      for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
+        for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
+          matrix[y][x] = factoryObj;
+        }
+      }
+      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
+      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[1].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
+      this.factories.push(factoryObj);
+      beginX += factoryObj.attributes.area[1] * 2;
+    }
+    beginY += factoryInfo.attributes.area[1] * 2;
+    // 生成下方传送带
+    // 生成分拣器
+    // 生成回路
+  }
+
+  generate(matrix, beginX) {
+    switch (this.produce.factory) {
+      case "矩阵研究站":
+      case "自演化研究站":
+        this.generateLab(matrix, beginX);
+        break;
+      case "微型粒子对撞机":
+        this.generateHadronCollider(matrix, beginX);
+        break;
+      case "原油精炼厂":
+        this.generateOilRefinery(matrix, beginX);
+        break;
+      case "化工厂":
+      case "量子化工厂":
+        this.generateChemicalPlant(matrix, beginX);
+        break;
+      default:
+        this.generateDefault(matrix, beginX);
+    }
+  }
 }
 
 /**
@@ -442,8 +577,9 @@ class BuildingUnit {
  */
 class StationUnit {
   buleprint;
-  index;
+  stationIndex;
   stationId = 2103; // 物流塔id
+  stationInfo; // 物流塔信息
   requireItems = []; // 需求列表
   provideItems = []; // 供应列表
   items = [];
@@ -461,12 +597,12 @@ class StationUnit {
   // 输出物品位置：
   //  第一个塔时：1-左上-喷涂剂、2-左中为主产物不，3-左下和右下都处理副产，4-右上
   //  不是第一个；1-左上、2-左下、3-右下、4-右上
-  constructor(buleprint, items, index) {
+  constructor(buleprint, items, stationIndex) {
     // todo：蓝图计算物流塔分配，StationUnit 只负责生成建筑
-    this.index = index;
+    this.stationIndex = stationIndex;
     this.buleprint = buleprint;
     this.items = items;
-    items.filter((item) => item.item).forEach((item) => (item.type === 1 ? this.requireItems.push(item) : this.provideItems.push(item)));
+    items.filter((item) => item.item).forEach((item) => (item.type === 2 ? this.requireItems.push(item) : this.provideItems.push(item)));
   }
 
   // 是否有喷涂剂
@@ -476,7 +612,7 @@ class StationUnit {
 
   getLeftWidth() {
     if (this.buleprint.recycleMode === "集装分拣器") {
-      if (this.index === 0) {
+      if (this.stationIndex === 0) {
         // 第一个塔左上为喷涂、左中为主产物，左下为副产；固定有喷涂剂。
         const proliferatorWidth = this.hasProliferator() ? 5 : 0; // 喷涂机宽度
         const masterWidth = 1; // 主产物
@@ -489,7 +625,7 @@ class StationUnit {
             surplusWidth += 1;
           } // else：副产正好与溢出时不需要增加
         } // else if (!this.buleprint.surplusJoinProduct && this.buleprint.surplus) // 副产不参与生产，直接从右下入塔
-        return Math.max(proliferatorWidth + masterWidth, surplusWidth);
+        return Math.max(proliferatorWidth, masterWidth, surplusWidth);
       } else {
         // 不是第一个塔，按前两个出口的最大长度
         const top = this.items[0].inserter.length + 2;
@@ -504,12 +640,16 @@ class StationUnit {
   getRightWidth() {
     if (this.buleprint.recycleMode === "集装分拣器") {
       const top = this.items.length > 3 ? this.items[3].inserter.length + 2 : 0;
-      if (this.index === 0 && this.buleprint.surplus) {
+      if (this.stationIndex === 0 && this.buleprint.surplus) {
         // 有副产，都从右下回收，宽度是1，可以直接返回第4个产物的宽度
-        return top;
+        return Math.max(top, 1);
       }
       // 否则，按最后两个产物的最大长度
-      let bottom = this.items.length > 2 ? this.items[2].inserter.length + 2 : 0;
+      let bottom = this.items?.[2]?.type === 1 ? this.items[2].inserter.length + 2 : 0;
+      if (this.stationIndex === 0 && this.items?.[2]?.item === this.buleprint.surplus) {
+        // 副产不参与生产，从右下入塔
+        bottom = 1;
+      }
       return Math.max(top, bottom);
     } else {
       console.log("todo ...");
@@ -526,11 +666,39 @@ class StationUnit {
       .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item])));
     this.width = this.getLeftWidth() + 8 + this.getRightWidth();
     console.log(
-      `物流塔 ${this.index} 宽 ${this.width}-(${this.getLeftWidth()}, ${this.getRightWidth()}) 需求：`,
+      `物流塔 ${this.stationIndex} 宽 ${this.width}-(${this.getLeftWidth()}, ${this.getRightWidth()}) 需求：`,
       this.requireItems,
       "，供应：",
       this.provideItems
     );
+  }
+
+  generate(matrix, beginX) {
+    let beginY = 1; // 物流塔从1开始
+    let stationBeginX = beginX + this.getLeftWidth();
+    // 生成上方传送带
+    // 生成建筑
+    this.stationInfo = getBuildingInfo("行星内物流运输站");
+    for (let x = stationBeginX; x < stationBeginX + this.stationInfo.attributes.area[0] * 2; x++) {
+      for (let y = beginY; y < beginY + this.stationInfo.attributes.area[1] * 2; y++) {
+        matrix[y][x] = this.stationInfo;
+      }
+    }
+    this.stationInfo.localOffset[0].x = stationBeginX + Math.ceil(this.stationInfo.attributes.area[0]); // 建筑宽度一半向上取整;
+    this.stationInfo.localOffset[0].y = beginY + Math.ceil(this.stationInfo.attributes.area[1]); //建筑中心点，建筑高度的一半
+    this.stationInfo.localOffset[1].x = stationBeginX + Math.ceil(this.stationInfo.attributes.area[0]); // 建筑宽度一半向上取整;
+    this.stationInfo.localOffset[1].y = beginY + Math.ceil(this.stationInfo.attributes.area[1]); //建筑中心点，建筑高度的一半;
+    // 设置配方
+    this.items.forEach((item, i) => {
+      if (item.item) {
+        this.stationInfo.parameters.storage[i].itemId = ITEM_NAME_MAP.get(item.item).ID;
+        this.stationInfo.parameters.storage[i].localRole = item.type;
+        this.stationInfo.parameters.storage[i].max = 5000;
+      }
+    });
+    // 生成下方传送带
+    // 生成分拣器
+    // 生成回路
   }
 }
 
