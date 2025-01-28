@@ -458,8 +458,6 @@ class BuildingUnit {
     if (this.buleprint.recycleMode === "集装分拣器") {
       if (["矩阵研究站", "自演化研究站"].includes(this.produce.factory)) {
         this.width = buildings[this.produce.factory].attributes.area[0] * 2 + 1; // 研究站可堆叠
-      } else if (["微型粒子对撞机"].includes(this.produce.factory)) {
-        this.width = this.produce.factoryNumber * (buildings[this.produce.factory].attributes.area[0] * 2 + 1) + 1; // 加1格输出传送带，和1格副产带
       } else {
         // 与建筑同宽
         this.width = this.produce.factoryNumber * buildings[this.produce.factory].attributes.area[0] * 2 + 1; // 加1格，传送带转到左上
@@ -480,7 +478,7 @@ class BuildingUnit {
   // 生成研究站
   generateLab(matrix, beginX) {
     // 对于建筑来讲，从传送带往下开始
-    let beginY = this.buleprint.belt.belts.length;
+    let beginY = 2;
     // 生成上方传送带
     // 生成建筑
     const factoryInfo = buildings[this.produce.factory];
@@ -514,17 +512,39 @@ class BuildingUnit {
   }
 
   // 生成粒子对撞机
-  generateHadronCollider(matrix, beginX) {}
+  generateHadronCollider(matrix, beginX) {
+    // 对于建筑来讲，从传送带往下开始
+    let beginY = 2;
+    // 生成上方传送带
+    // 生成建筑
+    const factoryInfo = buildings[this.produce.factory];
+    for (let i = 0; i < this.produce.factoryNumber; i++) {
+      // beginX += 1; // 左侧有1格空隙
+      // 建筑是一个方形，将矩阵中相应位置填入建筑
+      const factoryObj = getBuildingInfo(this.produce.factory);
+      factoryObj.recipeId = this.recipe.ID; // 配方id
+      for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
+        for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
+          matrix[y][x] = factoryObj;
+        }
+      }
+      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
+      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[1].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
+      this.factories.push(factoryObj);
+      beginX += factoryObj.attributes.area[0] * 2;
+    }
+    beginY += factoryInfo.attributes.area[1] * 2;
+    // 生成下方传送带
+    // 生成分拣器
+    // 生成回路
+    }
 
   // 生成原油精炼厂
-  generateOilRefinery(matrix, beginX) {}
-
-  // 生成化工厂
-  ategenerChemicalPlant(matrix, beginX) {}
-
-  generateDefault(matrix, beginX) {
+  generateOilRefinery(matrix, beginX) {
     // 对于建筑来讲，从传送带往下开始
-    let beginY = this.buleprint.belt.belts.length;
+    let beginY = 2;
     // 生成上方传送带
     // 生成建筑
     const factoryInfo = buildings[this.produce.factory];
@@ -542,7 +562,64 @@ class BuildingUnit {
       factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[1].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
       this.factories.push(factoryObj);
-      beginX += factoryObj.attributes.area[1] * 2;
+      beginX += factoryObj.attributes.area[0] * 2;
+    }
+    beginY += factoryInfo.attributes.area[1] * 2;
+    // 生成下方传送带
+    // 生成分拣器
+    // 生成回路
+    }
+
+  // 生成化工厂
+  generateChemicalPlant(matrix, beginX) {
+    // 对于建筑来讲，从传送带往下开始
+    let beginY = 2;
+    // 生成上方传送带
+    // 生成建筑
+    const factoryInfo = buildings[this.produce.factory];
+    for (let i = 0; i < this.produce.factoryNumber; i++) {
+      // 建筑是一个方形，将矩阵中相应位置填入建筑
+      const factoryObj = getBuildingInfo(this.produce.factory);
+      factoryObj.recipeId = this.recipe.ID; // 配方id
+      for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
+        for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
+          matrix[y][x] = factoryObj;
+        }
+      }
+      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
+      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[1].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
+      this.factories.push(factoryObj);
+      beginX += factoryObj.attributes.area[0] * 2;
+    }
+    beginY += factoryInfo.attributes.area[1] * 2;
+    // 生成下方传送带
+    // 生成分拣器
+    // 生成回路
+  }
+
+  generateDefault(matrix, beginX) {
+    // 对于建筑来讲，从传送带往下开始
+    let beginY = 2;
+    // 生成上方传送带
+    // 生成建筑
+    const factoryInfo = buildings[this.produce.factory];
+    for (let i = 0; i < this.produce.factoryNumber; i++) {
+      // 建筑是一个方形，将矩阵中相应位置填入建筑
+      const factoryObj = getBuildingInfo(this.produce.factory);
+      factoryObj.recipeId = this.recipe.ID; // 配方id
+      for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
+        for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
+          matrix[y][x] = factoryObj;
+        }
+      }
+      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
+      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[1].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
+      this.factories.push(factoryObj);
+      beginX += factoryObj.attributes.area[0] * 2;
     }
     beginY += factoryInfo.attributes.area[1] * 2;
     // 生成下方传送带
