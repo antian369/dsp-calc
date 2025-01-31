@@ -374,7 +374,7 @@ export function Result({needs_list, set_needs_list}) {
         const sorterType = scheme_data.scheme_for_recipe["分拣器"] || 0;
         const recycleType = scheme_data.scheme_for_recipe["特殊分拣器"] || 0;
         const rows = scheme_data.scheme_for_recipe["行数"] || 1;
-        const stackSize = scheme_data.scheme_for_recipe["堆叠数"] || 1;
+        const stackSize = scheme_data.scheme_for_recipe["堆叠"] || 1;
 
         // 获取对应的名称
         const beltNames = ["传送带", "高速传送带", "极速传送带"];
@@ -387,7 +387,7 @@ export function Result({needs_list, set_needs_list}) {
             "分拣器": sorterNames[sorterType],
             "回收": recycleType === 0 ? "无" : recycleNames[recycleType],
             "行数": rows,
-            "堆叠数": stackSize
+            "堆叠": stackSize
         });
         
         // 计算传送带利用率
@@ -564,10 +564,10 @@ export function Result({needs_list, set_needs_list}) {
                             </td>
                             <td className="ps-2 text-nowrap">
                                 <HorizontalMultiButtonSelect 
-                                    choice={scheme_data.scheme_for_recipe["特殊分拣器"] || 0} 
+                                    choice={scheme_data.scheme_for_recipe["特殊分拣器"] || 1} 
                                     options={[
-                                        {value: 1, item_icon: "集装分拣器"},
-                                        {value: 2, item_icon: "四向分流器"}
+                                        {value: 2, item_icon: "四向分流器"},
+                                        {value: 1, item_icon: "集装分拣器"}
                                     ]}
                                     onChange={(value) => {
                                         set_scheme_data(old_scheme_data => {
@@ -591,8 +591,7 @@ export function Result({needs_list, set_needs_list}) {
                                         {value: 2, label: "2"},
                                         {value: 3, label: "3"},
                                         {value: 4, label: "4"},
-                                        {value: 5, label: "5"},
-                                        {value: 6, label: "6"}
+                                        {value: 5, label: "5"}
                                     ]}
                                     onChange={(value) => {
                                         set_scheme_data(old_scheme_data => {
@@ -607,11 +606,11 @@ export function Result({needs_list, set_needs_list}) {
                         </tr>
                         <tr>
                             <td className="d-flex align-items-center text-nowrap">
-                                <span className="ms-auto me-1">堆叠数</span>
+                                <span className="ms-auto me-1">堆叠</span>
                             </td>
                             <td className="ps-2 text-nowrap">
                                 <HorizontalMultiButtonSelect 
-                                    choice={scheme_data.scheme_for_recipe["堆叠数"] || 1} 
+                                    choice={scheme_data.scheme_for_recipe["堆叠"] || 1} 
                                     options={[
                                         {value: 1, label: "1"},
                                         {value: 2, label: "2"},
@@ -620,7 +619,7 @@ export function Result({needs_list, set_needs_list}) {
                                     onChange={(value) => {
                                         set_scheme_data(old_scheme_data => {
                                             let scheme_data = structuredClone(old_scheme_data);
-                                            scheme_data.scheme_for_recipe["堆叠数"] = value;
+                                            scheme_data.scheme_for_recipe["堆叠"] = value;
                                             return scheme_data;
                                         })
                                     }}
