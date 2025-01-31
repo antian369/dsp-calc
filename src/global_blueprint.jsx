@@ -39,7 +39,7 @@ const RAW_FACTORY = ["采矿机", "大型采矿机", "轨道采集器", "行星�
 const ITEM_NAME_MAP = items.reduce((a, b) => a.set(b.Name, b), new Map());
 const ITEM_ID_MAP = items.reduce((a, b) => a.set(b.ID, b), new Map());
 const RECIPE_ID_MAP = recipes.reduce((a, b) => a.set(b.ID, b), new Map());
-const PRO_LIST = ["增产剂 Mk.I", "增产剂 Mk.I", "增产剂 Mk.III"];
+const PRO_LIST = ["增产剂 Mk.I", "增产剂 Mk.IIf", "增产剂 Mk.III"];
 const INSERTER_TYPE = ["分拣器", "高速分拣器", "极速分拣器"];
 const BELT_LEVEL = ["传送带", "高速传送带", "极速传送带"];
 const BELT_SHARE_SIZE = [23, 47, 119]; // 传送带容量，理论最大值-1
@@ -826,7 +826,11 @@ class BeltUnit {
   }
 
   compute() {
-    const filterItems = [...PRO_LIST, this.buleprint.produce]; //过滤增产和主产物，副产物不为氢时从总线中回收
+    const filterItems = [this.buleprint.produce]; //过滤增产和主产物，副产物不为氢时从总线中回收
+    if (!PRO_LIST.includes(this.buleprint.produce)) {
+      // 不生产增产剂时，无需将增产剂加入到总线中
+      filterItems.push(...PRO_LIST);
+    }
     const items = this.buleprint.produceUnits // 传送带上的一份物品
       .filter((unit) => !filterItems.includes(unit.item) && unit.item !== this.buleprint.produce)
       .map((unit) => {
