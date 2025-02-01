@@ -1002,7 +1002,7 @@
       "filterId": 0,
       "itemName": "行星内物流运输站",
       "attributes": {
-        "area": [4, 4]
+        "area": [4.5, 4.5]
       }
     },
     "星际物流运输站": {
@@ -1140,7 +1140,7 @@
       "filterId": 0,
       "itemName": "星际物流运输站",
       "attributes": {
-        "area": [4, 4]
+        "area": [4.5, 4.5]
       }
     },
     "电力感应塔": {

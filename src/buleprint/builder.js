@@ -38,6 +38,10 @@ function newBulprint(title = "新蓝图", size = { x: 1, y: 1 }, dragBoxSize = s
   };
 }
 
+const filterUnLinked = [2901, 2902]; // 矩阵研究站需要垂直连接
+export const ROW_HEIGHT_1 = 10; // 集装分拣器回收时一行的高度
+export const ROW_HEIGHT_2 = 15;
+
 export class BlueprintBuilder {
   dspBuleprint; // 游戏中的蓝图
   buleprint; // 原始蓝图
@@ -53,7 +57,7 @@ export class BlueprintBuilder {
     // 遍历矩阵，元素为空时表示空地，非空时表示建筑
     // 遍历时为建筑分配 index，从 0 开始，只有 index 为空时才分配，并将新分配 index 的建筑对象 加入到 buleprint.buildings 中
     let index = 0;
-    const height = this.buleprint.recycleMode === 1 ? 11 : 15; // 回收模式为集装分拣器时，高度为11，否则为15
+    const height = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2; // 回收模式为集装分拣器时，高度为11，否则为15
     this.matrix.forEach((row, y) => {
       const yOffset = Math.floor(y / height);
       row.forEach((building, x) => {
@@ -87,6 +91,16 @@ export class BlueprintBuilder {
       unLinked = unLinked.filter((f) => {
         if (f.inputObjIdx.index !== -1) {
           f.inputObjIdx = f.inputObjIdx.index;
+          return false;
+        }
+        return true;
+      });
+    }
+    unLinked = this.dspBuleprint.buildings.filter((f) => typeof f.outputObjIdx === "object");
+    while (unLinked.length) {
+      unLinked = unLinked.filter((f) => {
+        if (f.outputObjIdx.index !== -1) {
+          f.outputObjIdx = f.outputObjIdx.index;
           return false;
         }
         return true;
