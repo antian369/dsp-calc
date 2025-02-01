@@ -372,7 +372,7 @@ export function Result({needs_list, set_needs_list}) {
         // 获取各项配置
         const beltType = scheme_data.scheme_for_recipe["传送带"] || 0;
         const sorterType = scheme_data.scheme_for_recipe["分拣器"] || 0;
-        const recycleType = scheme_data.scheme_for_recipe["特殊分拣器"] || 0;
+        const recycleType = scheme_data.scheme_for_recipe["回收"] || 1;
         const rows = scheme_data.scheme_for_recipe["行数"] || 1;
         const stackSize = scheme_data.scheme_for_recipe["堆叠"] || 1;
 
@@ -564,7 +564,7 @@ export function Result({needs_list, set_needs_list}) {
                             </td>
                             <td className="ps-2 text-nowrap">
                                 <HorizontalMultiButtonSelect 
-                                    choice={scheme_data.scheme_for_recipe["特殊分拣器"] || 1} 
+                                    choice={scheme_data.scheme_for_recipe["回收"] || 1} 
                                     options={[
                                         {value: 2, item_icon: "四向分流器"},
                                         {value: 1, item_icon: "集装分拣器"}
@@ -572,7 +572,7 @@ export function Result({needs_list, set_needs_list}) {
                                     onChange={(value) => {
                                         set_scheme_data(old_scheme_data => {
                                             let scheme_data = structuredClone(old_scheme_data);
-                                            scheme_data.scheme_for_recipe["特殊分拣器"] = value;
+                                            scheme_data.scheme_for_recipe["回收"] = value;
                                             return scheme_data;
                                         })
                                     }}

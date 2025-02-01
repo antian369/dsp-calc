@@ -108,7 +108,7 @@ export function computeBlueprint({ allProduceUnits, surplusList, produces, beltT
 
 export function generateBlueprint(buleprint) {
   try {
-    const bp = new BlueprintBuilder("新蓝图", buleprint.generate());
+    const bp = new BlueprintBuilder("新蓝图", buleprint);
     const str = bp.toStr();
     // 将s加入到剪切板
     // navigator.clipboard.writeText(str);
