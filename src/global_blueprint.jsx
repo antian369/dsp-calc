@@ -1032,7 +1032,7 @@ class BeltUnit {
     let lastDirection; // 上一次的方向
     for (let i of priority) {
       console.log("priority:", i, JSON.stringify(current), JSON.stringify(end));
-      while (current[i] !== end[i]) {
+      while (Math.round(current[i]) !== Math.round(end[i])) {
         tmpI = i;
         const [belt, last] = this.createBelt(linkIndex);
         belt.localOffset[0] = Object.assign({}, last.localOffset[0]);
@@ -1040,10 +1040,10 @@ class BeltUnit {
           tmpI = zDirection;
           zDirectionAdded = true;
         }
-        if (current[tmpI] > end[tmpI]) {
-          belt.localOffset[0][tmpI] = last.localOffset[0][tmpI] - 1;
-        } else if (current[tmpI] < end[tmpI]) {
-          belt.localOffset[0][tmpI] = last.localOffset[0][tmpI] + 1;
+        if (Math.round(current[tmpI]) > Math.round(end[tmpI])) {
+          belt.localOffset[0][tmpI] = Math.round(last.localOffset[0][tmpI] - 1);
+        } else if (Math.round(current[tmpI]) < Math.round(end[tmpI])) {
+          belt.localOffset[0][tmpI] = Math.round(last.localOffset[0][tmpI] + 1);
         }
         if (tmpI !== "z" && i !== "z" && lastDirection !== i) {
           // 带子转弯
@@ -1052,6 +1052,10 @@ class BeltUnit {
         if (tmpI === "z") {
           // z轴方向，传送带要加入数组
           belts[belts.length - 1].push(belt);
+          // 增加偏移
+          if (last.localOffset[0].z > 0) {
+            last.localOffset[0][zDirection] += last.localOffset[0].z * 0.0017;
+          }
         } else {
           belts.push([belt]);
         }
