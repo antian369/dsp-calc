@@ -39,6 +39,7 @@ function newBulprint(title = "新蓝图", size = { x: 1, y: 1 }, dragBoxSize = s
 }
 
 const filterUnLinked = [2901, 2902]; // 矩阵研究站需要垂直连接
+const inserterIds = [2011, 2012, 2013, 2014]; // 分拣器id
 export const ROW_HEIGHT_1 = 10; // 集装分拣器回收时一行的高度
 export const ROW_HEIGHT_2 = 15;
 
@@ -67,6 +68,11 @@ export class BlueprintBuilder {
               if (b.index === -1) {
                 b.index = index++;
                 this.dspBuleprint.buildings.push(b);
+                if (!inserterIds.includes(b.itemId)) {
+                  b.localOffset[1].x = b.localOffset[0].x;
+                  b.localOffset[1].y = b.localOffset[0].y;
+                  b.localOffset[1].z = b.localOffset[0].z;
+                }
                 // 处理建筑的坐标偏移
                 b.localOffset[0].y += yOffset * height;
                 b.localOffset[1].y += yOffset * height;
@@ -75,6 +81,11 @@ export class BlueprintBuilder {
           } else if (building.index === -1) {
             building.index = index++;
             this.dspBuleprint.buildings.push(building);
+            if (!inserterIds.includes(building.itemId)) {
+              building.localOffset[1].x = building.localOffset[0].x;
+              building.localOffset[1].y = building.localOffset[0].y;
+              building.localOffset[1].z = building.localOffset[0].z;
+            }
             // 处理建筑的坐标偏移
             building.localOffset[0].y += yOffset * height;
             building.localOffset[1].y += yOffset * height;

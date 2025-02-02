@@ -663,7 +663,7 @@ class BuildingUnit {
     const y = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 - 1 : ROW_HEIGHT_2 - 1;
     for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
       for (let x = 0; x < this.width; x++) {
-        const [belt, last] = this.buleprint.belt.createBelt(z);
+        const [belt] = this.buleprint.belt.createBelt(z);
         belt.localOffset[0].x = beginX + x;
         belt.localOffset[0].y = y;
         belt.localOffset[0].z = z + 1;
@@ -683,7 +683,7 @@ class BuildingUnit {
   generateUpstream(matrix, beginX) {
     for (let y = 0; y < this.buleprint.belt.belts.length; y++) {
       for (let x = this.width - 1; x >= 0; x--) {
-        const [belt, last] = this.buleprint.belt.createBelt(y + this.buleprint.belt.belts.length);
+        const [belt] = this.buleprint.belt.createBelt(y + this.buleprint.belt.belts.length);
         belt.localOffset[0].x = beginX + x;
         belt.localOffset[0].y = 2 - y;
         belt.localOffset[1].x = beginX + x;
@@ -819,25 +819,38 @@ class StationUnit {
 
   // 生成上游传送带
   generateUpstream(matrix, beginX) {
-    if (this.stationIndex !== 0) {
-      const y = 1;
-      for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
-        for (let x = this.width - 1; x >= 0; x--) {
-          const [belt, last] = this.buleprint.belt.createBelt(z + this.buleprint.belt.belts.length);
-          belt.localOffset[0].x = beginX + x;
-          belt.localOffset[0].y = y;
-          belt.localOffset[0].z = z + 1;
-          belt.localOffset[1].x = beginX + x;
-          belt.localOffset[1].y = y;
-          belt.localOffset[1].z = z + 1;
-          matrix[2 - z][beginX + x] = [belt];
-          if (z === 0 && !matrix[y][beginX + x]) {
-            matrix[y][beginX + x] = [belt];
-          } else {
-            matrix[y][beginX + x].push(belt);
-          }
+    let branchEnd = 0;
+    if (this.stationIndex === 0) {
+      // 第一个塔需要将总线分叉并下沉到1层
+      // 从右往左生成，最后5格为喷涂机，然后是3格带子，之后全是直带
+      branchEnd = (this.buleprint.proliferatorLevel > 0 ? 5 : 0) + 3;
+    }
+
+    const y = 1;
+    for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
+      for (let x = this.width - 1; x >= branchEnd - 1; x--) {
+        const [belt] = this.buleprint.belt.createBelt(z + this.buleprint.belt.belts.length);
+        belt.localOffset[0].x = beginX + x;
+        belt.localOffset[0].y = y;
+        belt.localOffset[0].z = z + 1;
+        if (z === 0 && !matrix[y][beginX + x]) {
+          matrix[y][beginX + x] = [belt];
+        } else {
+          matrix[y][beginX + x].push(belt);
         }
       }
+    }
+    if (this.stationIndex === 0) {
+      this.buleprint.belt.belts.forEach((_, z) => {
+        const belts = this.buleprint.belt.connectBelt(z + this.buleprint.belt.belts.length, { x: beginX + branchEnd - 3 - 1, y: 2 - z, z: 0 }, ["y", "z", "x"]);
+        belts.forEach((belt) => {
+          if (matrix[2 - z][beginX + branchEnd - z]) {
+            matrix[2 - z][beginX + branchEnd - z].push(...belt);
+          } else {
+            matrix[2 - z][beginX + branchEnd - z] = belt;
+          }
+        });
+      });
     }
   }
 
@@ -846,13 +859,10 @@ class StationUnit {
     const y = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 - 1 : ROW_HEIGHT_2 - 1;
     for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
       for (let x = 0; x < this.width; x++) {
-        const [belt, last] = this.buleprint.belt.createBelt(z);
+        const [belt] = this.buleprint.belt.createBelt(z);
         belt.localOffset[0].x = beginX + x;
         belt.localOffset[0].y = y;
         belt.localOffset[0].z = z + 1;
-        belt.localOffset[1].x = beginX + x;
-        belt.localOffset[1].y = y;
-        belt.localOffset[1].z = z + 1;
         if (z === 0 && !matrix[y][beginX + x]) {
           matrix[y][beginX + x] = [belt];
         } else {
@@ -863,7 +873,7 @@ class StationUnit {
   }
 
   generate(matrix, beginX) {
-    let beginY = 0; // 物流塔从1开始，由于计算偏移时会向上取整，所以虽然是第2行，但是仍然从1开始
+    let beginY = 1; // 物流塔从1开始，由于计算偏移时会向上取整，所以虽然是第2行，但是仍然从1开始
     let stationBeginX = beginX + this.getLeftWidth();
     // 生成建筑
     this.stationInfo = getBuildingInfo("行星内物流运输站");
@@ -874,8 +884,6 @@ class StationUnit {
     }
     this.stationInfo.localOffset[0].x = stationBeginX + Math.ceil(this.stationInfo.attributes.area[0]); // 建筑宽度一半向上取整;
     this.stationInfo.localOffset[0].y = beginY + Math.ceil(this.stationInfo.attributes.area[1]); //建筑中心点，建筑高度的一半
-    this.stationInfo.localOffset[1].x = stationBeginX + Math.ceil(this.stationInfo.attributes.area[0]); // 建筑宽度一半向上取整;
-    this.stationInfo.localOffset[1].y = beginY + Math.ceil(this.stationInfo.attributes.area[1]); //建筑中心点，建筑高度的一半;
     // 设置配方
     this.items.forEach((item, i) => {
       if (item.item) {
@@ -1006,5 +1014,51 @@ class BeltUnit {
     this.beltLinks[i] = belt;
 
     return [belt, last];
+  }
+
+  /**
+   * 连接传送带
+   * @param {*} linkIndex 总线序号
+   * @param {*} end 结束坐标 {x, y, z}
+   * @param {*} priority 优先级 ['x', 'y', 'z']
+   * @param {*} zDirection Z 轴下沉时的方向，通常是优先级最低的方向
+   */
+  connectBelt(linkIndex, end, priority, zDirection = priority[2]) {
+    const begin = this.beltLinks[linkIndex].localOffset[0];
+    let current = begin;
+    const belts = [];
+    let zDirectionAdded = false;
+    let tmpI;
+    let lastDirection; // 上一次的方向
+    for (let i of priority) {
+      console.log("priority:", i, JSON.stringify(current), JSON.stringify(end));
+      while (current[i] !== end[i]) {
+        tmpI = i;
+        const [belt, last] = this.createBelt(linkIndex);
+        belt.localOffset[0] = Object.assign({}, last.localOffset[0]);
+        if (i === "z" && !zDirectionAdded) {
+          tmpI = zDirection;
+          zDirectionAdded = true;
+        }
+        if (current[tmpI] > end[tmpI]) {
+          belt.localOffset[0][tmpI] = last.localOffset[0][tmpI] - 1;
+        } else if (current[tmpI] < end[tmpI]) {
+          belt.localOffset[0][tmpI] = last.localOffset[0][tmpI] + 1;
+        }
+        if (tmpI !== "z" && i !== "z" && lastDirection !== i) {
+          // 带子转弯
+          belt.yaw = last.yaw = [315, 315];
+        }
+        if (tmpI === "z") {
+          // z轴方向，传送带要加入数组
+          belts[belts.length - 1].push(belt);
+        } else {
+          belts.push([belt]);
+        }
+        current = belt.localOffset[0];
+        lastDirection = tmpI === "z" ? lastDirection : tmpI;
+      }
+    }
+    return belts;
   }
 }

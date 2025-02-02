@@ -18,7 +18,7 @@
           "z": 0
         }
       ],
-      "yaw": [269.9729, 269.9729],
+      "yaw": [270, 270],
       "tilt": 0,
       "pitch": 0,
       "tilt2": 0,
@@ -56,7 +56,7 @@
           "z": 0
         }
       ],
-      "yaw": [269.9752, 269.9752],
+      "yaw": [270, 270],
       "tilt": 0,
       "pitch": 0,
       "tilt2": 0,
@@ -94,7 +94,7 @@
           "z": 0
         }
       ],
-      "yaw": [179.9997, 179.9997],
+      "yaw": [270, 270],
       "tilt": 0,
       "pitch": 0,
       "tilt2": 0,
@@ -751,7 +751,7 @@
       "filterId": 0,
       "itemName": "微型粒子对撞机",
       "attributes": {
-        "area": [5.5, 2.5]
+        "area": [5, 2.5]
       }
     },
     "喷涂机": {
@@ -860,7 +860,7 @@
       "tilt2": 0,
       "pitch2": 0,
       "outputObjIdx": -1,
-      "inputObjIdx": 1813,
+      "inputObjIdx": -1,
       "outputToSlot": 14,
       "inputFromSlot": 15,
       "outputFromSlot": 15,
@@ -1002,7 +1002,7 @@
       "filterId": 0,
       "itemName": "行星内物流运输站",
       "attributes": {
-        "area": [4.5, 4.5]
+        "area": [3.5, 3.5]
       }
     },
     "星际物流运输站": {
@@ -1140,7 +1140,7 @@
       "filterId": 0,
       "itemName": "星际物流运输站",
       "attributes": {
-        "area": [4.5, 4.5]
+        "area": [3.5, 3.5]
       }
     },
     "电力感应塔": {
