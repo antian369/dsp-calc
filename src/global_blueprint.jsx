@@ -42,6 +42,9 @@ const RECIPE_ID_MAP = recipes.reduce((a, b) => a.set(b.ID, b), new Map());
 const PRO_LIST = ["增产剂 Mk.I", "增产剂 Mk.IIf", "增产剂 Mk.III"];
 const INSERTER_TYPE = ["分拣器", "高速分拣器", "极速分拣器"];
 const BELT_LEVEL = ["传送带", "高速传送带", "极速传送带"];
+const SMELTER = ["电弧熔炉", "位面熔炉", "负熵熔炉"];
+const CHEMICAL = ["化工厂", "量子化工厂"];
+const LAB = ["矩阵研究站", "自演化研究站"];
 const BELT_SHARE_SIZE = [23, 47, 119]; // 传送带容量，理论最大值-1
 
 const BUILDINGS_STRING = new Map();
@@ -506,12 +509,13 @@ class BuildingUnit {
     this.itemId = ITEM_NAME_MAP.get(this.produce.item).ID;
     // 计算宽度
     if (this.buleprint.recycleMode === 1) {
-      if (["矩阵研究站", "自演化研究站"].includes(this.produce.factory)) {
+      this.width = this.produce.factoryNumber * buildings[this.produce.factory].attributes.area[0] * 2; // 建筑宽
+      if (LAB.includes(this.produce.factory)) {
         this.width = buildings[this.produce.factory].attributes.area[0] * 2; // 研究站可堆叠
-      } else {
-        this.width = this.produce.factoryNumber * buildings[this.produce.factory].attributes.area[0] * 2 + 1; // 与建筑同宽
-      }
-      if (this.produce.item !== this.buleprint.produce) {
+      } else if (["原油精炼厂", ...SMELTER, ...CHEMICAL].includes(this.produce.factory) && this.recipe.Results.includes(this.buleprint.produceId)) {
+        // 是最终产物时
+        this.width += 1;
+      } else if (this.produce.item !== this.buleprint.produce) {
         this.width += this.inserters.length; // 加分拣器宽度
       }
       this.width += 1; // 加1格输入到总线
@@ -531,7 +535,7 @@ class BuildingUnit {
   // 生成研究站
   generateLab(matrix, beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    // 生成上方传送带
+    let begin = beginX;
     // 生成建筑
     const factoryInfo = buildings[this.produce.factory];
     let lastFactory;
@@ -542,29 +546,30 @@ class BuildingUnit {
         factoryObj.inputObjIdx = lastFactory; // 输入
       }
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       factoryObj.localOffset[0].z = factoryObj.attributes.area[2] * i;
       this.factories.push(factoryObj);
       lastFactory = factoryObj;
     }
     // 研究站是垂直的，只生成第一个坐标即可
-    for (let x = beginX; x < beginX + factoryInfo.attributes.area[0] * 2; x++) {
+    for (let x = begin; x < begin + factoryInfo.attributes.area[0] * 2; x++) {
       for (let y = beginY; y < beginY + factoryInfo.attributes.area[1] * 2; y++) {
         matrix[y][x] = this.factories;
       }
     }
     beginY += factoryInfo.attributes.area[1] * 2;
-    // 生成下方传送带
-    // 生成分拣器
     // 生成回路
+    this.generateBelt(matrix, { x: beginX + 1, y: beginY, z: 0 }, { x: beginX + this.width - 1, y: beginY, z: 0 });
+    // 生成分拣器
+
     // 最终产物
   }
 
   // 生成粒子对撞机
   generateHadronCollider(matrix, beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    // 生成上方传送带
+    let begin = beginX;
     // 生成建筑
     const factoryInfo = buildings[this.produce.factory];
     for (let i = 0; i < this.produce.factoryNumber; i++) {
@@ -572,97 +577,161 @@ class BuildingUnit {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
       const factoryObj = getBuildingInfo(this.produce.factory);
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
+      for (let x = begin; x < begin + factoryObj.attributes.area[0] * 2; x++) {
         for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
           matrix[y][x] = [factoryObj];
         }
       }
-      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       this.factories.push(factoryObj);
-      beginX += factoryObj.attributes.area[0] * 2;
+      begin += factoryObj.attributes.area[0] * 2 + 1;
     }
-    beginY += factoryInfo.attributes.area[1] * 2;
-    // 生成下方传送带
-    // 生成分拣器
+    beginY += factoryInfo.attributes.area[1] * 2 + 1;
     // 生成回路
+    this.generateBelt(matrix, { x: beginX + 1, y: beginY, z: 0 }, { x: beginX + this.width - 1, y: beginY, z: 0 });
+    //副产回收
+    // 生成分拣器
   }
 
   // 生成原油精炼厂
   generateOilRefinery(matrix, beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    // 生成上方传送带
+    let begin = beginX;
     // 生成建筑
     const factoryInfo = buildings[this.produce.factory];
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
       const factoryObj = getBuildingInfo(this.produce.factory);
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
+      for (let x = begin; x < begin + factoryObj.attributes.area[0] * 2; x++) {
         for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
           matrix[y][x] = [factoryObj];
         }
       }
-      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       this.factories.push(factoryObj);
-      beginX += factoryObj.attributes.area[0] * 2;
+      begin += factoryObj.attributes.area[0] * 2;
     }
-    beginY += factoryInfo.attributes.area[1] * 2;
-    // 生成下方传送带
-    // 生成分拣器
+    beginY += factoryInfo.attributes.area[1] * 2 + 1;
     // 生成回路
+    this.generateBelt(matrix, { x: beginX + 1, y: beginY, z: 0 }, { x: beginX + this.width - 1, y: beginY, z: 0 });
+    //副产回收
+    // 生成分拣器
   }
 
   // 生成化工厂
   generateChemicalPlant(matrix, beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    // 生成上方传送带
+    let begin = beginX;
     // 生成建筑
     const factoryInfo = buildings[this.produce.factory];
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
       const factoryObj = getBuildingInfo(this.produce.factory);
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
+      for (let x = begin; x < begin + factoryObj.attributes.area[0] * 2; x++) {
         for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
           pushMatrix(matrix, y, x, [factoryObj]);
         }
       }
-      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       this.factories.push(factoryObj);
-      beginX += factoryObj.attributes.area[0] * 2;
+      begin += factoryObj.attributes.area[0] * 2;
     }
-    beginY += factoryInfo.attributes.area[1] * 2;
-    // 生成下方传送带
-    // 生成分拣器
+    beginY += factoryInfo.attributes.area[1] * 2 + 1;
     // 生成回路
+    this.generateBelt(matrix, { x: beginX + 1, y: beginY, z: 0 }, { x: beginX + this.width - 1, y: beginY, z: 0 });
+    //副产回收
+    // 生成分拣器
   }
 
+  // 熔炉、制造台
   generateDefault(matrix, beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    // 生成上方传送带
+    let begin = beginX;
     // 生成建筑
     const factoryInfo = buildings[this.produce.factory];
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
       const factoryObj = getBuildingInfo(this.produce.factory);
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
+      for (let x = begin; x < begin + factoryObj.attributes.area[0] * 2; x++) {
         for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
           pushMatrix(matrix, y, x, [factoryObj]);
         }
       }
-      factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
+      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       this.factories.push(factoryObj);
-      beginX += factoryObj.attributes.area[0] * 2;
+      begin += factoryObj.attributes.area[0] * 2;
     }
     beginY += factoryInfo.attributes.area[1] * 2;
-    // 生成下方传送带
-    // 生成分拣器
+    if (SMELTER.includes(this.produce.factory)) {
+      beginY += 1; // 熔炉需要多1格
+    }
     // 生成回路
+    this.generateBelt(matrix, { x: beginX + 1, y: beginY, z: 0 }, { x: beginX + this.width - 1, y: beginY, z: 0 });
+    // 生成分拣器
+  }
+
+  /**
+   * 生成带子
+   * @param {*} matrix
+   * @param {*} begin {x, y, z}
+   * @param {*} end {x, y, z}
+   * @param {*} priority ['x', 'y', 'z']
+   * @param {*} zDirection 'z'
+   */
+  generateBelt(matrix, begin, end, priority = ["x", "y", "z"], zDirection = priority[2]) {
+    let current = begin;
+    const belts = [];
+    let zDirectionAdded = false;
+    let lastDirection = priority[0]; // 上一次的方向
+    let tmpI;
+    let belt;
+    let last = getBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel]);
+    Object.assign(last.localOffset[0], begin); // 起点
+    pushMatrix(matrix, begin.y, begin.x, [last]);
+    for (let i of priority) {
+      console.log(`generateBelt ${this.produce.factory}-${this.recipe.Name}:`, i, JSON.stringify(current), JSON.stringify(end));
+      while (Math.round(current[i]) !== Math.round(end[i])) {
+        tmpI = i;
+        belt = getBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel]);
+        last.outputObjIdx = belt;
+        Object.assign(belt.localOffset[0], last.localOffset[0]);
+        if (i === "z" && !zDirectionAdded) {
+          tmpI = zDirection;
+          zDirectionAdded = true;
+        }
+        if (Math.round(current[tmpI]) > Math.round(end[tmpI])) {
+          belt.localOffset[0][tmpI] = Math.round(last.localOffset[0][tmpI] - 1);
+        } else if (Math.round(current[tmpI]) < Math.round(end[tmpI])) {
+          belt.localOffset[0][tmpI] = Math.round(last.localOffset[0][tmpI] + 1);
+        }
+        if (tmpI !== "z" && i !== "z" && lastDirection !== i) {
+          // 带子转弯
+          belt.yaw = last.yaw = [315, 315];
+        }
+        if (tmpI === "z") {
+          // z轴方向，传送带要加入数组
+          belts[belts.length - 1].push(belt);
+          // 增加偏移
+          if (last.localOffset[0].z > 0) {
+            last.localOffset[0][zDirection] += last.localOffset[0].z * 0.0017;
+          }
+        } else {
+          belts.push([belt]);
+        }
+        pushMatrix(matrix, belt.localOffset[0].y, belt.localOffset[0].x, [belt]);
+        current = belt.localOffset[0];
+        lastDirection = tmpI === "z" ? lastDirection : tmpI;
+        last = belt;
+      }
+    }
+    return belts;
   }
 
   // 生成下游传送带
