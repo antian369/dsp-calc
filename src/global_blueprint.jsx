@@ -79,6 +79,19 @@ function getInserterScheme(share) {
   return scheme.sort((a, b) => b.share - a.share);
 }
 
+/**
+ * 将矩阵推入到矩阵中
+ * @param {*} matrix
+ * @param {*} matrix2
+ */
+function pushMatrix(matrix, y, x, buildings) {
+  if (matrix[y][x]) {
+    matrix[y][x].push(...buildings);
+  } else {
+    matrix[y][x] = buildings;
+  }
+}
+
 export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, sorterType, recycleType, rows, stackSize }) {
   try {
     const produceUnits = mergeProduceUnits(allProduceUnits, surplusList, produces);
@@ -409,6 +422,7 @@ class MixedConveyerBeltBuleprint {
       buildings.forEach((building) => {
         building.generateDownstream(rowMatrix, beginX); // 生成下游传送带，需要从左向右生成
         building.generate(rowMatrix, beginX);
+        building.generateSurplusBelt(rowMatrix, beginX); // 生成副产传送带
         beginX += building.width;
       });
       for (let i = buildings.length - 1; i >= 0; i--) {
@@ -493,11 +507,14 @@ class BuildingUnit {
     // 计算宽度
     if (this.buleprint.recycleMode === 1) {
       if (["矩阵研究站", "自演化研究站"].includes(this.produce.factory)) {
-        this.width = buildings[this.produce.factory].attributes.area[0] * 2 + 1; // 研究站可堆叠
+        this.width = buildings[this.produce.factory].attributes.area[0] * 2; // 研究站可堆叠
       } else {
-        // 与建筑同宽
-        this.width = this.produce.factoryNumber * buildings[this.produce.factory].attributes.area[0] * 2 + 1; // 加1格，传送带转到左上
+        this.width = this.produce.factoryNumber * buildings[this.produce.factory].attributes.area[0] * 2 + 1; // 与建筑同宽
       }
+      if (this.produce.item !== this.buleprint.produce) {
+        this.width += this.inserters.length; // 加分拣器宽度
+      }
+      this.width += 1; // 加1格输入到总线
     } else {
       this.width = this.buleprint.width * 2;
     }
@@ -528,9 +545,6 @@ class BuildingUnit {
       factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       factoryObj.localOffset[0].z = factoryObj.attributes.area[2] * i;
-      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[1].z = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
-      factoryObj.localOffset[1].z = factoryObj.attributes.area[2] * i;
       this.factories.push(factoryObj);
       lastFactory = factoryObj;
     }
@@ -544,6 +558,7 @@ class BuildingUnit {
     // 生成下方传送带
     // 生成分拣器
     // 生成回路
+    // 最终产物
   }
 
   // 生成粒子对撞机
@@ -564,8 +579,6 @@ class BuildingUnit {
       }
       factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
-      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[1].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
       this.factories.push(factoryObj);
       beginX += factoryObj.attributes.area[0] * 2;
     }
@@ -592,8 +605,6 @@ class BuildingUnit {
       }
       factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
-      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[1].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
       this.factories.push(factoryObj);
       beginX += factoryObj.attributes.area[0] * 2;
     }
@@ -615,13 +626,11 @@ class BuildingUnit {
       factoryObj.recipeId = this.recipe.ID; // 配方id
       for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
         for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
-          matrix[y][x] = [factoryObj];
+          pushMatrix(matrix, y, x, [factoryObj]);
         }
       }
       factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
-      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[1].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
       this.factories.push(factoryObj);
       beginX += factoryObj.attributes.area[0] * 2;
     }
@@ -642,13 +651,11 @@ class BuildingUnit {
       factoryObj.recipeId = this.recipe.ID; // 配方id
       for (let x = beginX; x < beginX + factoryObj.attributes.area[0] * 2; x++) {
         for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
-          matrix[y][x] = [factoryObj];
+          pushMatrix(matrix, y, x, [factoryObj]);
         }
       }
       factoryObj.localOffset[0].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
       factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
-      factoryObj.localOffset[1].x = beginX + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[1].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半;
       this.factories.push(factoryObj);
       beginX += factoryObj.attributes.area[0] * 2;
     }
@@ -667,14 +674,7 @@ class BuildingUnit {
         belt.localOffset[0].x = beginX + x;
         belt.localOffset[0].y = y;
         belt.localOffset[0].z = z + 1;
-        belt.localOffset[1].x = beginX + x;
-        belt.localOffset[1].y = y;
-        belt.localOffset[1].z = z + 1;
-        if (z === 0 && !matrix[y][beginX + x]) {
-          matrix[y][beginX + x] = [belt];
-        } else {
-          matrix[y][beginX + x].push(belt);
-        }
+        pushMatrix(matrix, y, beginX + x, [belt]);
       }
     }
   }
@@ -686,13 +686,34 @@ class BuildingUnit {
         const [belt] = this.buleprint.belt.createBelt(y + this.buleprint.belt.belts.length);
         belt.localOffset[0].x = beginX + x;
         belt.localOffset[0].y = 2 - y;
-        belt.localOffset[1].x = beginX + x;
-        belt.localOffset[1].y = 2 - y;
-        matrix[2 - y][beginX + x] = [belt];
+        pushMatrix(matrix, 2 - y, beginX + x, [belt]);
       }
     }
   }
 
+  // 生成副产带子
+  generateSurplusBelt(matrix, beginX) {
+    // if (!surplusBeltCreated) {
+    //   // 副产带子起点
+    //   if (this.produce.factory === "微型粒子对撞机") {
+    //     beginX = this.width - 1;
+    //   } else {
+    //     beginX = this.width - 1;
+    //   }
+    // }
+    if (this.buleprint.surplus) {
+      const y = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 - 1 : ROW_HEIGHT_2 - 1;
+      const z = this.buleprint.belt.belts.length + 1;
+      for (let x = 0; x < this.width; x++) {
+        const [belt] = this.buleprint.belt.createBelt(z + this.buleprint.belt.belts.length); // 副产带子在最后
+        belt.localOffset[0].x = beginX + x;
+        belt.localOffset[0].y = y;
+        belt.localOffset[0].z = z;
+        pushMatrix(matrix, y, beginX + x, [belt]);
+      }
+    }
+  }
+  // 生成建筑
   generate(matrix, beginX) {
     let beginY = 2; // 建筑从3开始，由于计算偏移时会向上取整，所以虽然是第4行，但是仍然从3开始
     switch (this.produce.factory) {
@@ -833,22 +854,14 @@ class StationUnit {
         belt.localOffset[0].x = beginX + x;
         belt.localOffset[0].y = y;
         belt.localOffset[0].z = z + 1;
-        if (z === 0 && !matrix[y][beginX + x]) {
-          matrix[y][beginX + x] = [belt];
-        } else {
-          matrix[y][beginX + x].push(belt);
-        }
+        pushMatrix(matrix, y, beginX + x, [belt]);
       }
     }
     if (this.stationIndex === 0) {
       this.buleprint.belt.belts.forEach((_, z) => {
         const belts = this.buleprint.belt.connectBelt(z + this.buleprint.belt.belts.length, { x: beginX + branchEnd - 3 - 1, y: 2 - z, z: 0 }, ["y", "z", "x"]);
         belts.forEach((belt) => {
-          if (matrix[2 - z][beginX + branchEnd - z]) {
-            matrix[2 - z][beginX + branchEnd - z].push(...belt);
-          } else {
-            matrix[2 - z][beginX + branchEnd - z] = belt;
-          }
+          pushMatrix(matrix, 2 - z, beginX + branchEnd - z, belt);
         });
       });
     }
@@ -863,15 +876,27 @@ class StationUnit {
         belt.localOffset[0].x = beginX + x;
         belt.localOffset[0].y = y;
         belt.localOffset[0].z = z + 1;
-        if (z === 0 && !matrix[y][beginX + x]) {
-          matrix[y][beginX + x] = [belt];
-        } else {
-          matrix[y][beginX + x].push(belt);
-        }
+        pushMatrix(matrix, y, beginX + x, [belt]);
       }
     }
   }
 
+  // 生成副产带子
+  generateSurplusBelt(matrix, beginX) {
+    if (this.stationIndex === 0 && this.buleprint.surplus) {
+      // 副产不参与生产，从右下入塔
+      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 4;
+      const [belt] = this.buleprint.belt.createBelt(this.buleprint.belt.belts.length * 2 + 1);
+      belt.localOffset[0].x = beginX;
+      belt.localOffset[0].y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1;
+      belt.localOffset[0].z = this.buleprint.belt.belts.length + 1;
+      pushMatrix(matrix, y, beginX, [belt]);
+      const belts = this.buleprint.belt
+        .connectBelt(this.buleprint.belt.belts.length * 2 + 1, { x: beginX + this.getLeftWidth(), y, z: 0 }, ["z", "y", "x"], "y")
+        .flatMap((belt) => belt);
+      pushMatrix(matrix, y, beginX + this.getLeftWidth() - 1, belts);
+    }
+  }
   generate(matrix, beginX) {
     let beginY = 1; // 物流塔从1开始，由于计算偏移时会向上取整，所以虽然是第2行，但是仍然从1开始
     let stationBeginX = beginX + this.getLeftWidth();
@@ -879,7 +904,7 @@ class StationUnit {
     this.stationInfo = getBuildingInfo("行星内物流运输站");
     for (let x = stationBeginX; x < stationBeginX + this.stationInfo.attributes.area[0] * 2; x++) {
       for (let y = beginY; y < beginY + this.stationInfo.attributes.area[1] * 2; y++) {
-        matrix[y][x] = [this.stationInfo];
+        pushMatrix(matrix, y, x, [this.stationInfo]);
       }
     }
     this.stationInfo.localOffset[0].x = stationBeginX + Math.ceil(this.stationInfo.attributes.area[0]); // 建筑宽度一半向上取整;
