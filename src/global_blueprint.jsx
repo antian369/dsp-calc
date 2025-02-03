@@ -98,7 +98,7 @@ function pushMatrix(matrix, buildings) {
       ) {
         if (matrix[y][x] !== building) {
           if (matrix[y][x]) {
-            BELT_LEVEL.includes(matrix[y][x].itemName) ? matrix[y][x].push(building) : matrix[y][x].unshift(building); // 传送带放最上
+            BELT_LEVEL.includes(building.itemName) ? matrix[y][x].push(building) : matrix[y][x].unshift(building); // 传送带放最上
           } else {
             matrix[y][x] = [building];
           }
@@ -578,7 +578,7 @@ class BuildingUnit {
       const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
         x: begin + Math.ceil(factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
         y: beginY + Math.ceil(factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
-        z: factoryObj.attributes.area[2] * i, // 建筑高度
+        z: factoryInfo.attributes.area[2] * i, // 建筑高度
       });
       if (lastFactory) {
         factoryObj.inputObjIdx = lastFactory; // 输入
@@ -586,12 +586,6 @@ class BuildingUnit {
       factoryObj.recipeId = this.recipe.ID; // 配方id
       this.factories.push(factoryObj);
       lastFactory = factoryObj;
-    }
-    // 研究站是垂直的，只生成第一个坐标即可
-    for (let x = begin; x < begin + factoryInfo.attributes.area[0] * 2; x++) {
-      for (let y = beginY; y < beginY + factoryInfo.attributes.area[1] * 2; y++) {
-        matrix[y][x] = this.factories;
-      }
     }
     beginY += factoryInfo.attributes.area[1] * 2;
     // 生成回路
