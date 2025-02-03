@@ -53,14 +53,6 @@ for (const k in buildings) {
 }
 
 /**
- * 获取建筑蓝图信息
- * @param {*} name
- */
-function getBuildingInfo(name) {
-  return JSON.parse(BUILDINGS_STRING.get(name));
-}
-
-/**
  * 计算需要的分拣器数量
  * @param {*} share
  */
@@ -88,12 +80,32 @@ function getInserterScheme(share, inserterLevel = 2) {
  * @param {*} matrix
  * @param {*} matrix2
  */
-function pushMatrix(matrix, y, x, buildings) {
-  if (matrix[y][x]) {
-    matrix[y][x].push(...buildings);
-  } else {
-    matrix[y][x] = buildings;
-  }
+function pushMatrix(matrix, buildings) {
+  buildings.forEach((building) => {
+    if (building.localOffset[0].x === -1 || building.localOffset[0].y === -1) {
+      throw new Error("存在未初始化的建筑");
+    }
+    // 建筑的 x 和 y 是建筑的中心点，如果建筑的宽、高大于1，则将建筑的 x 和 y 作为建筑的中心点
+    for (
+      let x = Math[BELT_LEVEL.includes(building.itemName) ? "ceil" : "floor"](building.localOffset[0].x - building.attributes.area[0]);
+      x < Math.ceil(building.localOffset[0].x + building.attributes.area[0]);
+      x++
+    ) {
+      for (
+        let y = Math[BELT_LEVEL.includes(building.itemName) ? "ceil" : "floor"](building.localOffset[0].y - building.attributes.area[1]);
+        y < Math.ceil(building.localOffset[0].y + building.attributes.area[1]);
+        y++
+      ) {
+        if (matrix[y][x] !== building) {
+          if (matrix[y][x]) {
+            BELT_LEVEL.includes(matrix[y][x].itemName) ? matrix[y][x].push(building) : matrix[y][x].unshift(building); // 传送带放最上
+          } else {
+            matrix[y][x] = [building];
+          }
+        }
+      }
+    }
+  });
 }
 
 export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, sorterType, recycleType, rows, stackSize }) {
@@ -258,6 +270,7 @@ class MixedConveyerBeltBuleprint {
   belt; // 传送带单元
 
   matrix; // 地图二维数组
+  buildingsMap = new Map();
 
   constructor(
     produce, // string，蓝图生产目标物品
@@ -397,6 +410,26 @@ class MixedConveyerBeltBuleprint {
       }
     });
     console.log(`第${i}行，宽度：${rowWidth}, aggWidth:${aggWidth}, 建筑：`, this.buildingsRow[i]);
+  }
+
+  /**
+   * 获取建筑蓝图信息
+   * @param {*} name
+   */
+  createBuildingInfo(matrix, name, localOffset = { x: 0, y: 0, z: 0 }) {
+    const building = JSON.parse(BUILDINGS_STRING.get(name));
+    Object.assign(building.localOffset[0], localOffset);
+    this.buildingsMap.set(`${name}-${localOffset.x}-${localOffset.y}-${localOffset.z}`, building);
+    pushMatrix(matrix, [building]);
+    return building;
+  }
+
+  // 查询建筑
+  getBuildingInfo(name, localOffset = { x: 0, y: 0, z: 0 }) {
+    const key = `${name}-${localOffset.x}-${localOffset.y}-${localOffset.z}`;
+    if (this.buildingsMap.has(key)) {
+      return this.buildingsMap.get(key);
+    }
   }
 
   /**
@@ -542,14 +575,15 @@ class BuildingUnit {
     let lastFactory;
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = getBuildingInfo(this.produce.factory);
+      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
+        x: begin + Math.ceil(factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: beginY + Math.ceil(factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+        z: factoryObj.attributes.area[2] * i, // 建筑高度
+      });
       if (lastFactory) {
         factoryObj.inputObjIdx = lastFactory; // 输入
       }
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
-      factoryObj.localOffset[0].z = factoryObj.attributes.area[2] * i;
       this.factories.push(factoryObj);
       lastFactory = factoryObj;
     }
@@ -576,15 +610,11 @@ class BuildingUnit {
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // beginX += 1; // 左侧有1格空隙
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = getBuildingInfo(this.produce.factory);
+      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
+        x: begin + Math.ceil(factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: beginY + Math.ceil(factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+      });
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      for (let x = begin; x < begin + factoryObj.attributes.area[0] * 2; x++) {
-        for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
-          matrix[y][x] = [factoryObj];
-        }
-      }
-      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       this.factories.push(factoryObj);
       begin += factoryObj.attributes.area[0] * 2 + 1;
     }
@@ -603,15 +633,11 @@ class BuildingUnit {
     const factoryInfo = buildings[this.produce.factory];
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = getBuildingInfo(this.produce.factory);
+      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
+        x: begin + Math.ceil(factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: beginY + Math.ceil(factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+      });
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      for (let x = begin; x < begin + factoryObj.attributes.area[0] * 2; x++) {
-        for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
-          matrix[y][x] = [factoryObj];
-        }
-      }
-      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       this.factories.push(factoryObj);
       begin += factoryObj.attributes.area[0] * 2;
     }
@@ -630,15 +656,11 @@ class BuildingUnit {
     const factoryInfo = buildings[this.produce.factory];
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = getBuildingInfo(this.produce.factory);
+      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
+        x: begin + Math.ceil(factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: beginY + Math.ceil(factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+      });
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      for (let x = begin; x < begin + factoryObj.attributes.area[0] * 2; x++) {
-        for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
-          pushMatrix(matrix, y, x, [factoryObj]);
-        }
-      }
-      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       this.factories.push(factoryObj);
       begin += factoryObj.attributes.area[0] * 2;
     }
@@ -657,15 +679,11 @@ class BuildingUnit {
     const factoryInfo = buildings[this.produce.factory];
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = getBuildingInfo(this.produce.factory);
+      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
+        x: begin + Math.ceil(factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: beginY + Math.ceil(factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+      });
       factoryObj.recipeId = this.recipe.ID; // 配方id
-      for (let x = begin; x < begin + factoryObj.attributes.area[0] * 2; x++) {
-        for (let y = beginY; y < beginY + factoryObj.attributes.area[1] * 2; y++) {
-          pushMatrix(matrix, y, x, [factoryObj]);
-        }
-      }
-      factoryObj.localOffset[0].x = begin + Math.ceil(factoryObj.attributes.area[0]); // 建筑宽度一半向上取整;
-      factoryObj.localOffset[0].y = beginY + Math.ceil(factoryObj.attributes.area[1]); //建筑中心点，建筑高度的一半
       this.factories.push(factoryObj);
       begin += factoryObj.attributes.area[0] * 2;
     }
@@ -674,7 +692,18 @@ class BuildingUnit {
       beginY += 1; // 熔炉需要多1格
     }
     // 生成回路
-    this.generateBelt(matrix, { x: beginX + 1, y: beginY, z: 0 }, { x: beginX + this.width - 1, y: beginY, z: 0 });
+    if (this.produce.item !== this.buleprint.produce) {
+      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 2; // 总线下方一格开始
+      const z = this.buleprint.belt.getBeltIndex(this.produce.item) + 1; // 从总线回收的带子，产物所在带子的z轴
+      const inputBelt = this.generateBelt(matrix, { x: beginX + 1, y, z }, { x: beginX + this.width - 1, y: beginY, z: 0 }, ["z", "y", "x"], "y");
+      const outputBelt = this.generateBelt(
+        matrix,
+        { x: beginX + this.width - this.inserters.length, y: beginY + 3, z: 0 }, // x:建筑右侧开始, y:建筑输出位置上3格, z: 0
+        { x: beginX + this.width, y: y + 1, z }, // 连接到总线
+        ["x", "z", "y"], // 先横向
+        "y" // 延y轴方向上升
+      );
+    }
     // 生成分拣器
   }
 
@@ -693,24 +722,22 @@ class BuildingUnit {
     let lastDirection = priority[0]; // 上一次的方向
     let tmpI;
     let belt;
-    let last = getBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel]);
-    Object.assign(last.localOffset[0], begin); // 起点
-    pushMatrix(matrix, begin.y, begin.x, [last]);
+    let last = this.buleprint.createBuildingInfo(matrix, BELT_LEVEL[this.buleprint.beltLevel], begin); // 起点
     for (let i of priority) {
       console.log(`generateBelt ${this.produce.factory}-${this.recipe.Name}:`, i, JSON.stringify(current), JSON.stringify(end));
       while (Math.round(current[i]) !== Math.round(end[i])) {
         tmpI = i;
-        belt = getBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel]);
+        const cursorOffset = Object.assign({}, last.localOffset[0]);
+        if (Math.round(current[tmpI]) > Math.round(end[tmpI])) {
+          cursorOffset[tmpI] = Math.round(cursorOffset[tmpI] - 1);
+        } else if (Math.round(current[tmpI]) < Math.round(end[tmpI])) {
+          cursorOffset[tmpI] = Math.round(cursorOffset[tmpI] + 1);
+        }
+        belt = this.buleprint.createBuildingInfo(matrix, BELT_LEVEL[this.buleprint.beltLevel], cursorOffset);
         last.outputObjIdx = belt;
-        Object.assign(belt.localOffset[0], last.localOffset[0]);
         if (i === "z" && !zDirectionAdded) {
           tmpI = zDirection;
           zDirectionAdded = true;
-        }
-        if (Math.round(current[tmpI]) > Math.round(end[tmpI])) {
-          belt.localOffset[0][tmpI] = Math.round(last.localOffset[0][tmpI] - 1);
-        } else if (Math.round(current[tmpI]) < Math.round(end[tmpI])) {
-          belt.localOffset[0][tmpI] = Math.round(last.localOffset[0][tmpI] + 1);
         }
         if (tmpI !== "z" && i !== "z" && lastDirection !== i) {
           // 带子转弯
@@ -726,7 +753,6 @@ class BuildingUnit {
         } else {
           belts.push([belt]);
         }
-        pushMatrix(matrix, belt.localOffset[0].y, belt.localOffset[0].x, [belt]);
         current = belt.localOffset[0];
         lastDirection = tmpI === "z" ? lastDirection : tmpI;
         last = belt;
@@ -740,11 +766,7 @@ class BuildingUnit {
     const y = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 - 1 : ROW_HEIGHT_2 - 1;
     for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
       for (let x = 0; x < this.width; x++) {
-        const [belt] = this.buleprint.belt.createBelt(z);
-        belt.localOffset[0].x = beginX + x;
-        belt.localOffset[0].y = y;
-        belt.localOffset[0].z = z + 1;
-        pushMatrix(matrix, y, beginX + x, [belt]);
+        this.buleprint.belt.createBelt(matrix, z, { x: beginX + x, y, z: z + 1 });
       }
     }
   }
@@ -753,10 +775,7 @@ class BuildingUnit {
   generateUpstream(matrix, beginX) {
     for (let y = 0; y < this.buleprint.belt.belts.length; y++) {
       for (let x = this.width - 1; x >= 0; x--) {
-        const [belt] = this.buleprint.belt.createBelt(y + this.buleprint.belt.belts.length);
-        belt.localOffset[0].x = beginX + x;
-        belt.localOffset[0].y = 2 - y;
-        pushMatrix(matrix, 2 - y, beginX + x, [belt]);
+        this.buleprint.belt.createBelt(matrix, y + this.buleprint.belt.belts.length, { x: beginX + x, y: 2 - y, z: y + 1 });
       }
     }
   }
@@ -775,11 +794,7 @@ class BuildingUnit {
       const y = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 - 1 : ROW_HEIGHT_2 - 1;
       const z = this.buleprint.belt.belts.length + 1;
       for (let x = 0; x < this.width; x++) {
-        const [belt] = this.buleprint.belt.createBelt(z + this.buleprint.belt.belts.length); // 副产带子在最后
-        belt.localOffset[0].x = beginX + x;
-        belt.localOffset[0].y = y;
-        belt.localOffset[0].z = z;
-        pushMatrix(matrix, y, beginX + x, [belt]);
+        this.buleprint.belt.createBelt(matrix, z + this.buleprint.belt.belts.length, { x: beginX + x, y, z }); // 副产带子在最后
       }
     }
   }
@@ -814,7 +829,7 @@ class StationUnit {
   buleprint;
   stationIndex;
   stationId = 2103; // 物流塔id
-  stationInfo; // 物流塔信息
+  stationObj; // 物流塔信息
   requireItems = []; // 需求列表
   provideItems = []; // 供应列表
   items = [];
@@ -920,19 +935,12 @@ class StationUnit {
     const y = 1;
     for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
       for (let x = this.width - 1; x >= branchEnd - 1; x--) {
-        const [belt] = this.buleprint.belt.createBelt(z + this.buleprint.belt.belts.length);
-        belt.localOffset[0].x = beginX + x;
-        belt.localOffset[0].y = y;
-        belt.localOffset[0].z = z + 1;
-        pushMatrix(matrix, y, beginX + x, [belt]);
+        this.buleprint.belt.createBelt(matrix, z + this.buleprint.belt.belts.length, { x: beginX + x, y, z: z + 1 });
       }
     }
     if (this.stationIndex === 0) {
       this.buleprint.belt.belts.forEach((_, z) => {
-        const belts = this.buleprint.belt.connectBelt(z + this.buleprint.belt.belts.length, { x: beginX + branchEnd - 3 - 1, y: 2 - z, z: 0 }, ["y", "z", "x"]);
-        belts.forEach((belt) => {
-          pushMatrix(matrix, 2 - z, beginX + branchEnd - z, belt);
-        });
+        this.buleprint.belt.connectBelt(matrix, z + this.buleprint.belt.belts.length, { x: beginX + branchEnd - 3 - 1, y: 2 - z, z: 0 }, ["y", "z", "x"]);
       });
     }
   }
@@ -942,11 +950,7 @@ class StationUnit {
     const y = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 - 1 : ROW_HEIGHT_2 - 1;
     for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
       for (let x = 0; x < this.width; x++) {
-        const [belt] = this.buleprint.belt.createBelt(z);
-        belt.localOffset[0].x = beginX + x;
-        belt.localOffset[0].y = y;
-        belt.localOffset[0].z = z + 1;
-        pushMatrix(matrix, y, beginX + x, [belt]);
+        this.buleprint.belt.createBelt(matrix, z, { x: beginX + x, y, z: z + 1 });
       }
     }
   }
@@ -956,35 +960,31 @@ class StationUnit {
     if (this.stationIndex === 0 && this.buleprint.surplus) {
       // 副产不参与生产，从右下入塔
       const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 4;
-      const [belt] = this.buleprint.belt.createBelt(this.buleprint.belt.belts.length * 2 + 1);
-      belt.localOffset[0].x = beginX;
-      belt.localOffset[0].y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1;
-      belt.localOffset[0].z = this.buleprint.belt.belts.length + 1;
-      pushMatrix(matrix, y, beginX, [belt]);
-      const belts = this.buleprint.belt
-        .connectBelt(this.buleprint.belt.belts.length * 2 + 1, { x: beginX + this.getLeftWidth(), y, z: 0 }, ["z", "y", "x"], "y")
+      this.buleprint.belt.createBelt(matrix, this.buleprint.belt.belts.length * 2 + 1, {
+        x: beginX,
+        y: (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1,
+        z: this.buleprint.belt.belts.length + 1,
+      });
+      this.buleprint.belt
+        .connectBelt(matrix, this.buleprint.belt.belts.length * 2 + 1, { x: beginX + this.getLeftWidth(), y, z: 0 }, ["z", "y", "x"], "y")
         .flatMap((belt) => belt);
-      pushMatrix(matrix, y, beginX + this.getLeftWidth() - 1, belts);
     }
   }
   generate(matrix, beginX) {
     let beginY = 1; // 物流塔从1开始，由于计算偏移时会向上取整，所以虽然是第2行，但是仍然从1开始
     let stationBeginX = beginX + this.getLeftWidth();
     // 生成建筑
-    this.stationInfo = getBuildingInfo("行星内物流运输站");
-    for (let x = stationBeginX; x < stationBeginX + this.stationInfo.attributes.area[0] * 2; x++) {
-      for (let y = beginY; y < beginY + this.stationInfo.attributes.area[1] * 2; y++) {
-        pushMatrix(matrix, y, x, [this.stationInfo]);
-      }
-    }
-    this.stationInfo.localOffset[0].x = stationBeginX + Math.ceil(this.stationInfo.attributes.area[0]); // 建筑宽度一半向上取整;
-    this.stationInfo.localOffset[0].y = beginY + Math.ceil(this.stationInfo.attributes.area[1]); //建筑中心点，建筑高度的一半
+    const stationInfo = buildings["行星内物流运输站"];
+    this.stationObj = this.buleprint.createBuildingInfo(matrix, stationInfo.itemName, {
+      x: stationBeginX + Math.ceil(stationInfo.attributes.area[0]), // 建筑宽度一半向上取整;
+      y: beginY + Math.ceil(stationInfo.attributes.area[1]), //建筑中心点，建筑高度的一半
+    });
     // 设置配方
     this.items.forEach((item, i) => {
       if (item.item) {
-        this.stationInfo.parameters.storage[i].itemId = ITEM_NAME_MAP.get(item.item).ID;
-        this.stationInfo.parameters.storage[i].localRole = item.type;
-        this.stationInfo.parameters.storage[i].max = 5000;
+        this.stationObj.parameters.storage[i].itemId = ITEM_NAME_MAP.get(item.item).ID;
+        this.stationObj.parameters.storage[i].localRole = item.type;
+        this.stationObj.parameters.storage[i].max = 5000;
       }
     });
     // 生成下方传送带，下方是上游，从右到左生成
@@ -1092,6 +1092,7 @@ class BeltUnit {
         return i;
       }
     }
+    throw new Error(`物品 ${item} 不存在于总线中`);
   }
 
   /**
@@ -1099,8 +1100,8 @@ class BeltUnit {
    * @param {*} i
    * @returns
    */
-  createBelt(i) {
-    const belt = getBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel]);
+  createBelt(matrix, i, localOffset) {
+    const belt = this.buleprint.createBuildingInfo(matrix, BELT_LEVEL[this.buleprint.beltLevel], localOffset);
     const last = this.beltLinks[i];
     if (last) {
       // 不是环线带起点时，连接到上一个带子
@@ -1118,7 +1119,7 @@ class BeltUnit {
    * @param {*} priority 优先级 ['x', 'y', 'z']
    * @param {*} zDirection Z 轴下沉时的方向，通常是优先级最低的方向
    */
-  connectBelt(linkIndex, end, priority, zDirection = priority[2]) {
+  connectBelt(matrix, linkIndex, end, priority, zDirection = priority[2]) {
     const begin = this.beltLinks[linkIndex].localOffset[0];
     let current = begin;
     const belts = [];
@@ -1129,17 +1130,18 @@ class BeltUnit {
       console.log("priority:", i, JSON.stringify(current), JSON.stringify(end));
       while (Math.round(current[i]) !== Math.round(end[i])) {
         tmpI = i;
-        const [belt, last] = this.createBelt(linkIndex);
-        belt.localOffset[0] = Object.assign({}, last.localOffset[0]);
         if (i === "z" && !zDirectionAdded) {
           tmpI = zDirection;
           zDirectionAdded = true;
         }
+        const last = this.buleprint.belt.beltLinks[linkIndex];
+        const cursorOffset = Object.assign({}, last.localOffset[0]);
         if (Math.round(current[tmpI]) > Math.round(end[tmpI])) {
-          belt.localOffset[0][tmpI] = Math.round(last.localOffset[0][tmpI] - 1);
+          cursorOffset[tmpI] = Math.round(cursorOffset[tmpI] - 1);
         } else if (Math.round(current[tmpI]) < Math.round(end[tmpI])) {
-          belt.localOffset[0][tmpI] = Math.round(last.localOffset[0][tmpI] + 1);
+          cursorOffset[tmpI] = Math.round(cursorOffset[tmpI] + 1);
         }
+        const [belt] = this.createBelt(matrix, linkIndex, cursorOffset);
         if (tmpI !== "z" && i !== "z" && lastDirection !== i) {
           // 带子转弯
           belt.yaw = last.yaw = [315, 315];
