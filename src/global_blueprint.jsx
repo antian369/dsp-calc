@@ -40,7 +40,7 @@ const ITEM_NAME_MAP = items.reduce((a, b) => a.set(b.Name, b), new Map());
 const ITEM_ID_MAP = items.reduce((a, b) => a.set(b.ID, b), new Map());
 const RECIPE_ID_MAP = recipes.reduce((a, b) => a.set(b.ID, b), new Map());
 const PRO_LIST = ["增产剂 Mk.I", "增产剂 Mk.IIf", "增产剂 Mk.III"];
-const INSERTER_TYPE = ["分拣器", "高速分拣器", "极速分拣器"];
+const INSERTER_TYPE = ["分拣器", "高速分拣器", "极速分拣器", "集装分拣器"];
 const BELT_LEVEL = ["传送带", "高速传送带", "极速传送带"];
 const SMELTER = ["电弧熔炉", "位面熔炉", "负熵熔炉"];
 const CHEMICAL = ["化工厂", "量子化工厂"];
@@ -64,14 +64,15 @@ function getBuildingInfo(name) {
  * 计算需要的分拣器数量
  * @param {*} share
  */
-function getInserterScheme(share) {
+function getInserterScheme(share, inserterLevel = 2) {
   const scheme = [];
+  const settings = inserterSettings.filter((setting, i) => setting.level <= inserterLevel && i !== 7);
   if (share % 2 === 1) {
     share -= 3;
     scheme.push(inserterSettings[7]);
   }
   while (share > 0) {
-    for (const setting of inserterSettings) {
+    for (const setting of settings) {
       if (share >= setting.share) {
         scheme.push(setting);
         share -= setting.share;
@@ -228,7 +229,7 @@ function mergeProduceUnits(allProduceUnits, surplusList = {}, produces) {
 class MixedConveyerBeltBuleprint {
   recycleMode = 1; // 回收方式: 1-"集装分拣器"，2-"四向分流器"
   stackCount = 4; // 堆叠数量: 1 | 2 | 4
-  inserterMixLevel = 2; // 输入混带的最高级别：0-分拣器，1-高速分拣器，2-极速分拣器
+  inserterMixLevel = 2; // 输入混带的最高级别：0-分拣器，1-高速分拣器，2-极速分拣器, 3-集装分拣器
   proliferatorLevel = 0; // 喷涂：0-无，1-MK.1，2-MK.2，3-MK.3
   beltLevel = 2; // 传送带级别：0-黄带，1-绿带，2-蓝带
   multiple = 1; // 蓝图倍数
@@ -278,7 +279,7 @@ class MixedConveyerBeltBuleprint {
     this.rawMaterial = rawMaterial;
     this.rowCount = rowCount;
     this.beltLevel = beltType;
-    this.inserterMixLevel = sorterType;
+    this.inserterMixLevel = recycleType === 1 ? 3 : sorterType;
     this.recycleMode = recycleType;
     this.stackCount = stackSize;
     this.proliferatorLevel = Math.min(
@@ -505,7 +506,7 @@ class BuildingUnit {
   }
 
   compute() {
-    this.inserters = getInserterScheme(Math.ceil(this.produce.grossOutput / this.buleprint.shareSize));
+    this.inserters = getInserterScheme(Math.ceil(this.produce.grossOutput / this.buleprint.shareSize), this.buleprint.inserterMixLevel);
     this.itemId = ITEM_NAME_MAP.get(this.produce.item).ID;
     // 计算宽度
     if (this.buleprint.recycleMode === 1) {
@@ -894,10 +895,10 @@ class StationUnit {
   compute() {
     this.requireItems
       .filter((item) => !PRO_LIST.includes(item.item))
-      .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item])));
+      .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item], this.buleprint.inserterMixLevel)));
     this.provideItems
       .filter((item) => item.item !== this.buleprint.produce) // 主产物不分配分拣器
-      .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item])));
+      .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item], this.buleprint.inserterMixLevel)));
     this.width = this.getLeftWidth() + 8 + this.getRightWidth();
     console.log(
       `物流塔 ${this.stationIndex} 宽 ${this.width}-(${this.getLeftWidth()}, ${this.getRightWidth()}) 需求：`,
