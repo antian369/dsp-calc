@@ -570,12 +570,6 @@ class BuildingUnit {
     console.log(`建筑：${this.produce.factory}, 输出：${this.produce.item}, 副产：${this.buleprint.surplus}, 宽度：${this.width}, 分拣器：`, this.inserters);
   }
 
-  getSurplus() {
-    if (this.recipe.Results.includes(this.buleprint.surplusId)) {
-      return this.buleprint.surplusId;
-    }
-  }
-
   // 生成研究站
   generateLab(matrix, beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
@@ -605,7 +599,7 @@ class BuildingUnit {
   // 生成粒子对撞机
   generateHadronCollider(matrix, beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    let begin = beginX;
+    let begin = beginX + 1;
     // 生成建筑
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // beginX += 1; // 左侧有1格空隙
@@ -619,8 +613,21 @@ class BuildingUnit {
       begin += factoryObj.attributes.area[0] * 2 + 1;
     }
     beginY += this.factoryInfo.attributes.area[1] * 2 + 1;
+    this.generateOutputBelt(matrix, beginX, beginY, ["z", "x", "y"], "x", 1); // 生成回路
     //副产回收
-    this.generateOutputBelt(matrix, beginX, beginY, ["z", "x", "y"], "x"); // 生成回路
+    if (this.getSurplus()) {
+      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1; // 总线点结束
+      this.factories.forEach((factory, index) => {
+        this.buleprint.belt.generateBelt(
+          matrix,
+          { x: beginX + index * (factory.attributes.area[0] * 2 + 1), y: 4, z: 0 },
+          { x: beginX + index * (factory.attributes.area[0] * 2 + 1), y, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
+          ["y", "z", "x"],
+          "y",
+          2
+        );
+      });
+    }
     // 生成分拣器
   }
 
@@ -642,6 +649,16 @@ class BuildingUnit {
     beginY += this.factoryInfo.attributes.area[1] * 2 + 1;
     this.generateOutputBelt(matrix, beginX, beginY); // 生成回路
     //副产回收
+    if (this.getSurplus()) {
+      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1; // 总线点结束
+      this.buleprint.belt.generateBelt(
+        matrix,
+        { x: beginX + 3, y: beginY + 1, z: 0 },
+        { x: beginX + this.width - 2, y: y, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
+        ["x", "z", "y"],
+        "x"
+      );
+    }
     // 生成分拣器
   }
 
@@ -661,8 +678,19 @@ class BuildingUnit {
       begin += factoryObj.attributes.area[0] * 2;
     }
     beginY += this.factoryInfo.attributes.area[1] * 2 + 1;
-    //副产回收
     this.generateOutputBelt(matrix, beginX, beginY, ["y", "z", "x"], "x"); // 生成回路
+    //副产回收
+    if (this.getSurplus()) {
+      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1; // 总线点结束
+      this.buleprint.belt.generateBelt(
+        matrix,
+        { x: beginX + 3, y: beginY + 1, z: 0 },
+        { x: beginX + this.width - 2, y: y, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
+        ["x", "z", "y"],
+        "x"
+      );
+    }
+
     // 生成分拣器
   }
 
@@ -690,7 +718,16 @@ class BuildingUnit {
     // 生成分拣器
   }
 
-  generateOutputBelt(matrix, beginX, beginY, priority = ["z", "y", "x"], zDirection = "y") {
+  /**
+   * 生成主产物回路
+   * @param {*} matrix
+   * @param {*} beginX
+   * @param {*} beginY
+   * @param {*} priority 输入总线的带子优先级
+   * @param {*} zDirection 输入总线的带子方向
+   * @param {*} interval 建筑之间的间隔，对撞机为1，其它是0
+   */
+  generateOutputBelt(matrix, beginX, beginY, priority = ["z", "y", "x"], zDirection = "y", interval = 0) {
     // 生成回路
     if (this.produce.item === this.buleprint.produce) {
       this.buleprint.belt.generateBelt(matrix, { x: beginX + 1, y: beginY, z: 0 }, { x: beginX + this.width - 1, y: beginY, z: 0 }); // 最终产物进塔的第4个槽
@@ -700,10 +737,10 @@ class BuildingUnit {
       this.buleprint.belt.generateBelt(matrix, { x: beginX + 1, y, z }, { x: beginX + this.width - 1, y: beginY, z: 0 }, priority, zDirection);
       this.buleprint.belt.generateBelt(
         matrix,
-        { x: beginX + this.width - this.inserters.length, y: beginY - 3, z: 0 }, // x:建筑右侧开始, y:建筑输出位置为第4格, z: 0
+        { x: beginX + this.width - this.inserters.length + this.factories.length * interval - 1, y: beginY - 3, z: 0 }, // x:建筑右侧开始, y:建筑输出位置为第4格, z: 0
         { x: beginX + this.width, y: y + 1, z, outputToSlot: 2 }, // 连接到总线
-        ['x', 'z', 'y'], // 先横向
-        'y' // 延y轴方向上升
+        ["x", "z", "y"], // 先横向
+        "y" // 延y轴方向上升
       );
     }
   }
@@ -788,6 +825,12 @@ class BuildingUnit {
 
   getProduce() {
     return ITEM_ID_MAP.get(this.recipe.Results.find((id) => ITEM_ID_MAP.get(id).Name !== this.buleprint.surplus));
+  }
+
+  getSurplus() {
+    if (this.recipe.Results.includes(this.buleprint.surplusId)) {
+      return ITEM_ID_MAP.get(this.buleprint.surplusId);
+    }
   }
 }
 
@@ -1089,8 +1132,9 @@ class BeltUnit {
    * @param {*} end {x, y, z, stationSlot, outputToSlot} 输入到物流塔时，stationSlot 有值
    * @param {*} priority ['x', 'y', 'z']
    * @param {*} zDirection 'z'
+   * @param {*} zDirectForward 升降提前几格
    */
-  generateBelt(matrix, begin, end, priority = ["x", "y", "z"], zDirection = priority[2]) {
+  generateBelt(matrix, begin, end, priority = ["x", "y", "z"], zDirection = "x", zDirectForward = 1) {
     let current = begin;
     const belts = [];
     let zDirectionAdded = false;
@@ -1105,6 +1149,17 @@ class BeltUnit {
         tmpI = i;
         if (i === "z" && !zDirectionAdded) {
           tmpI = zDirection;
+          zDirectionAdded = true;
+        }
+        if (
+          priority[1] === "z" &&
+          tmpI === priority[0] &&
+          priority[0] === zDirection &&
+          Math.round(Math.abs(current[tmpI] - end[tmpI])) === zDirectForward &&
+          Math.round(current["z"]) !== Math.round(end["z"])
+        ) {
+          // 如果是在第1优先级的方向上升降，需要提前1格进行
+          tmpI = "z";
           zDirectionAdded = true;
         }
         const cursorOffset = Object.assign({}, last.localOffset[0]);
@@ -1172,7 +1227,7 @@ class BeltUnit {
    * @param {*} priority 优先级 ['x', 'y', 'z']
    * @param {*} zDirection Z 轴下沉时的方向，通常是优先级最低的方向
    */
-  connectBelt(matrix, linkIndex, end, priority, zDirection = priority[2]) {
+  connectBelt(matrix, linkIndex, end, priority, zDirection = "x") {
     const begin = this.beltLinks[linkIndex].localOffset[0];
     let current = begin;
     const belts = [];
