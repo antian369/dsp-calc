@@ -551,7 +551,7 @@ class BuildingUnit {
   }
 
   compute() {
-    this.inserters = getInserterScheme(Math.ceil(this.produce.grossOutput / this.buleprint.shareSize), this.buleprint.inserterMixLevel);
+    this.inserters = getInserterScheme(Math.max(Math.ceil(this.produce.grossOutput / this.buleprint.shareSize), 2), this.buleprint.inserterMixLevel);
     this.inserters.sort((a, b) => a.length - b.length);
     this.itemId = ITEM_NAME_MAP.get(this.produce.item).ID;
     // 计算宽度
@@ -569,7 +569,7 @@ class BuildingUnit {
         this.width += this.inserters.length; // 加分拣器宽度
       }
       if (this.produce.factory === HADRON_COLLIDER && this.getSurplus()) {
-        this.width += this.produce.factoryNumber - 1; // 粒子对撞机有副产物时需要多1格
+        this.width += this.produce.factoryNumber; // 粒子对撞机有副产物时需要多1格
       }
       this.width += 1; // 加1格输入到总线
     } else {
@@ -609,7 +609,7 @@ class BuildingUnit {
   // 生成粒子对撞机
   generateHadronCollider(beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    let x = beginX + 1;
+    let x = beginX + (this.getSurplus() ? 2 : 1);
     let y = beginY + 2;
     // 生成建筑
     for (let i = 0; i < this.produce.factoryNumber; i++) {
@@ -630,8 +630,8 @@ class BuildingUnit {
       const endY = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY; // 总线点结束
       this.factories.forEach((factory, index) => {
         this.buleprint.belt.generateBelt(
-          { x: beginX + index * (factory.attributes.area[0] * 2 + 1), y: beginY + 4, z: 0 },
-          { x: beginX + index * (factory.attributes.area[0] * 2 + 1), y: endY, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
+          { x: beginX + index * (factory.attributes.area[0] * 2 + 1) + 1, y: beginY + 4, z: 0 },
+          { x: beginX + index * (factory.attributes.area[0] * 2 + 1) + 1, y: endY, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
           ["y", "z", "x"],
           "y",
           2
@@ -692,7 +692,7 @@ class BuildingUnit {
     this.generateOutputBelt(beginX, beginY, y, ["y", "z", "x"], "x"); // 生成回路
     //副产回收
     if (this.getSurplus()) {
-      const endY = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1; // 总线点结束
+      const endY = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY; // 总线点结束
       this.buleprint.belt.generateBelt(
         { x: beginX + 3, y: y + 1, z: 0 },
         { x: beginX + this.width - 2, y: endY, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
