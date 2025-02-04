@@ -375,6 +375,7 @@ export function Result({needs_list, set_needs_list}) {
         const recycleType = scheme_data.scheme_for_recipe["回收"] || 1;
         const rows = scheme_data.scheme_for_recipe["行数"] || 1;
         const stackSize = scheme_data.scheme_for_recipe["堆叠"] || 1;
+        const floor = scheme_data.scheme_for_recipe["层高"] || 15; // 添加层高参数
 
         // 获取对应的名称
         const beltNames = ["传送带", "高速传送带", "极速传送带"];
@@ -391,7 +392,17 @@ export function Result({needs_list, set_needs_list}) {
         });
         
         // 计算传送带利用率
-        const buleprint = computeBlueprint({allProduceUnits, surplusList, produces, beltType, sorterType, recycleType, rows, stackSize});
+        const buleprint = computeBlueprint({
+            allProduceUnits, 
+            surplusList, 
+            produces, 
+            beltType, 
+            sorterType, 
+            recycleType, 
+            rows, 
+            stackSize,
+            floor // 传入层高参数
+        });
         setBeltUtilization(`${buleprint.belt.beltUsageRate}% x ${buleprint.belt.belts.length}`);
         return buleprint;
     };
@@ -633,6 +644,31 @@ export function Result({needs_list, set_needs_list}) {
                             </td>
                             <td className="ps-2 text-nowrap">
                                 {beltUtilization || '-'}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td className="d-flex align-items-center text-nowrap">
+                                <span className="ms-auto me-1">层高</span>
+                            </td>
+                            <td className="ps-2 text-nowrap">
+                                <select 
+                                    value={scheme_data.scheme_for_recipe["层高"] || 15}
+                                    onChange={(e) => {
+                                        set_scheme_data(old_scheme_data => {
+                                            let scheme_data = structuredClone(old_scheme_data);
+                                            scheme_data.scheme_for_recipe["层高"] = parseInt(e.target.value);
+                                            return scheme_data;
+                                        })
+                                    }}
+                                    className="form-select form-select-sm"
+                                    style={{width: 'auto', minWidth: '70px'}}
+                                >
+                                    {[3,5,7,9,11,13,15].map(value => (
+                                        <option key={value} value={value}>
+                                            {value}
+                                        </option>
+                                    ))}
+                                </select>
                             </td>
                         </tr>
                         

@@ -111,7 +111,7 @@ function pushMatrix(matrix, buildings) {
   });
 }
 
-export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, sorterType, recycleType, rows, stackSize }) {
+export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, sorterType, recycleType, rows, stackSize, floor }) {
   try {
     const produceUnits = mergeProduceUnits(allProduceUnits, surplusList, produces);
     const { order, rawMaterial } = orderRecipe(produceUnits);
@@ -128,7 +128,8 @@ export function computeBlueprint({ allProduceUnits, surplusList, produces, beltT
       beltType,
       sorterType,
       recycleType,
-      stackSize
+      stackSize,
+      floor
     );
     buleprint.compute();
     return buleprint;
@@ -286,7 +287,8 @@ class MixedConveyerBeltBuleprint {
     beltType = 2, // 传送带级别：0-黄带，1-绿带，2-蓝带
     sorterType = 2, // 输入混带的最高级别：0-分拣器，1-高速分拣器，2-极速分拣器
     recycleType = 1, // 回收方式: 1-"集装分拣器"，2-"四向分流器"
-    stackSize = 4 // 堆叠数量: 1 | 2 | 4
+    stackSize = 4, // 堆叠数量: 1 | 2 | 4
+    floor = 15 // 层高
   ) {
     this.produce = produce;
     this.produceId = ITEM_NAME_MAP.get(produce).ID;
@@ -298,6 +300,7 @@ class MixedConveyerBeltBuleprint {
     this.inserterMixLevel = recycleType === 1 ? 3 : sorterType;
     this.recycleMode = recycleType;
     this.stackCount = stackSize;
+    this.floor = floor;
     this.proliferatorLevel = Math.min(
       produceUnits.reduce((a, b) => Math.max(a, b.proNum), 0),
       3
@@ -419,13 +422,13 @@ class MixedConveyerBeltBuleprint {
    * 获取建筑蓝图信息
    * @param {*} name
    */
-  createBuildingInfo(matrix, name, localOffset = { x: 0, y: 0, z: 0 }) {
+  createBuildingInfo(name, localOffset = { x: 0, y: 0, z: 0 }) {
     const building = JSON.parse(BUILDINGS_STRING.get(name));
     building.localOffset[0].x = localOffset.x;
     building.localOffset[0].y = localOffset.y;
     building.localOffset[0].z = localOffset.z ?? 0;
     this.buildingsMap.set(`${name}-${localOffset.x}-${localOffset.y}-${localOffset.z}`, building);
-    pushMatrix(matrix, [building]);
+    pushMatrix(this.matrix, [building]);
     return building;
   }
 
@@ -455,52 +458,51 @@ class MixedConveyerBeltBuleprint {
 
     // 找到最长的行
     const maxWidth = this.buildingsRow.map((unit) => unit.reduce((a, b) => a + b.width, 0)).reduce((a, b) => Math.max(a, b), 0);
-    const matrixBlock = this.buildingsRow.map((buildings) => {
+    const height = this.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2; // 回收模式为集装分拣器时，高度为11，否则为15
+    let beginY = 0;
+    this.matrix = []; // 蓝图坐标矩阵
+    this.buildingsRow.forEach((buildings) => {
       // 初始化一行 12 x maxRow 的二维数组
       const length = this.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2;
-      const rowMatrix = Array.from({ length }, () => Array(maxWidth).fill(null));
+      this.matrix.push(...Array.from({ length }, () => Array(maxWidth).fill(null)));
       this.belt.beltLinks = []; // 清空环线带子
       let beginX = 0;
       buildings.forEach((building) => {
-        building.generateDownstream(rowMatrix, beginX); // 生成下游传送带，需要从左向右生成
-        building.generate(rowMatrix, beginX);
-        building.generateSurplusBelt(rowMatrix, beginX); // 生成副产传送带
+        building.generateDownstream(beginX, beginY); // 生成下游传送带，需要从左向右生成
+        building.generate(beginX, beginY);
+        building.generateSurplusBelt(beginX, beginY); // 生成副产传送带
         beginX += building.width;
       });
       for (let i = buildings.length - 1; i >= 0; i--) {
         const building = buildings[i];
         beginX -= building.width;
-        building.generateUpstream(rowMatrix, beginX); // 生成上游传送带，需要从右向左生成
+        building.generateUpstream(beginX, beginY); // 生成上游传送带，需要从右向左生成
         if (building.produce?.item === this.produce) {
-          building.generateProductBelt(rowMatrix, beginX); // 最终产物
+          building.generateProductBelt(beginX, beginY); // 最终产物
         }
       }
-      return rowMatrix;
+      beginY += height; // 下一行增加高度
     });
 
-    // 每一行坐标都是从0计算，然后合并到 matrix 中时增加偏移量即可。
-    const matrix = [];
-
-    matrixBlock.forEach((rowMatrix, i) => {
-      matrix.push(...rowMatrix);
-      rowMatrix.forEach((row) =>
-        console.log(
-          row
-            .map((factory) => {
-              if (!factory) {
-                return "口";
-              }
-              if (factory.length) {
-                return factory[0]?.itemName?.[0] || "口";
-              }
-              return factory?.itemName?.[0] || "口";
-            })
-            .join("")
-        )
-      ); // 打印一行
-      console.log(`===============${i}===================`);
+    this.matrix.forEach((row, i) => {
+      console.log(
+        row
+          .map((factory) => {
+            if (!factory) {
+              return "口";
+            }
+            if (factory.length) {
+              return factory[0]?.itemName?.[0] || "口";
+            }
+            return factory?.itemName?.[0] || "口";
+          })
+          .join("")
+      );
+      if ((i + 1) % height === 0) {
+        console.log(`===============${Math.round(i / height)}===================`);
+      }
     });
-    return matrix;
+    return this.matrix;
   }
 }
 
@@ -550,17 +552,24 @@ class BuildingUnit {
 
   compute() {
     this.inserters = getInserterScheme(Math.ceil(this.produce.grossOutput / this.buleprint.shareSize), this.buleprint.inserterMixLevel);
+    this.inserters.sort((a, b) => a.length - b.length);
     this.itemId = ITEM_NAME_MAP.get(this.produce.item).ID;
     // 计算宽度
     if (this.buleprint.recycleMode === 1) {
       this.width = this.produce.factoryNumber * buildings[this.produce.factory].attributes.area[0] * 2; // 建筑宽
       if (LAB.includes(this.produce.factory)) {
+        if (this.buleprint.floor < this.produce.factoryNumber) {
+          throw new Error(`${this.produce.factory} 层高 ${this.buleprint.floor} 小于建筑高度 ${this.produce.factoryNumber}`);
+        }
         this.width = buildings[this.produce.factory].attributes.area[0] * 2; // 研究站可堆叠
       } else if (["原油精炼厂", ...SMELTER, ...CHEMICAL].includes(this.produce.factory) && this.recipe.Results.includes(this.buleprint.produceId)) {
         // 是最终产物时
         this.width += 1;
       } else if (this.produce.item !== this.buleprint.produce) {
         this.width += this.inserters.length; // 加分拣器宽度
+      }
+      if (this.produce.factory === HADRON_COLLIDER && this.getSurplus()) {
+        this.width += this.produce.factoryNumber - 1; // 粒子对撞机有副产物时需要多1格
       }
       this.width += 1; // 加1格输入到总线
     } else {
@@ -571,16 +580,17 @@ class BuildingUnit {
   }
 
   // 生成研究站
-  generateLab(matrix, beginX, beginY) {
+  generateLab(beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    let begin = beginX;
+    let x = beginX;
+    let y = beginY + 2;
     // 生成建筑
     let lastFactory;
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
-        x: begin + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
-        y: beginY + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+      const factoryObj = this.buleprint.createBuildingInfo(this.produce.factory, {
+        x: x + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: y + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
         z: this.factoryInfo.attributes.area[2] * i, // 建筑高度
       });
       if (lastFactory) {
@@ -590,38 +600,38 @@ class BuildingUnit {
       this.factories.push(factoryObj);
       lastFactory = factoryObj;
     }
-    beginY += this.factoryInfo.attributes.area[1] * 2;
+    y += this.factoryInfo.attributes.area[1] * 2;
 
-    this.generateOutputBelt(matrix, beginX, beginY, ["z", "x", "y"], "x"); // 生成回路
+    this.generateOutputBelt(beginX, beginY, y, ["z", "x", "y"], "x"); // 生成回路
     // 生成分拣器
   }
 
   // 生成粒子对撞机
-  generateHadronCollider(matrix, beginX, beginY) {
+  generateHadronCollider(beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    let begin = beginX + 1;
+    let x = beginX + 1;
+    let y = beginY + 2;
     // 生成建筑
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // beginX += 1; // 左侧有1格空隙
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
-        x: begin + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
-        y: beginY + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+      const factoryObj = this.buleprint.createBuildingInfo(this.produce.factory, {
+        x: x + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: y + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
       });
       factoryObj.recipeId = this.recipe.ID; // 配方id
       this.factories.push(factoryObj);
-      begin += factoryObj.attributes.area[0] * 2 + 1;
+      x += factoryObj.attributes.area[0] * 2 + (this.getSurplus() ? 1 : 0); // 粒子对撞机有副产物时需要多1格
     }
-    beginY += this.factoryInfo.attributes.area[1] * 2 + 1;
-    this.generateOutputBelt(matrix, beginX, beginY, ["z", "x", "y"], "x", 1); // 生成回路
+    y += this.factoryInfo.attributes.area[1] * 2 + 1;
+    this.generateOutputBelt(beginX, beginY, y, ["z", "x", "y"], "x"); // 生成回路
     //副产回收
     if (this.getSurplus()) {
-      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1; // 总线点结束
+      const endY = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY; // 总线点结束
       this.factories.forEach((factory, index) => {
         this.buleprint.belt.generateBelt(
-          matrix,
-          { x: beginX + index * (factory.attributes.area[0] * 2 + 1), y: 4, z: 0 },
-          { x: beginX + index * (factory.attributes.area[0] * 2 + 1), y, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
+          { x: beginX + index * (factory.attributes.area[0] * 2 + 1), y: beginY + 4, z: 0 },
+          { x: beginX + index * (factory.attributes.area[0] * 2 + 1), y: endY, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
           ["y", "z", "x"],
           "y",
           2
@@ -632,29 +642,29 @@ class BuildingUnit {
   }
 
   // 生成原油精炼厂
-  generateOilRefinery(matrix, beginX, beginY) {
+  generateOilRefinery(beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    let begin = beginX;
+    let x = beginX;
+    let y = beginY + 2;
     // 生成建筑
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
-        x: begin + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
-        y: beginY + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+      const factoryObj = this.buleprint.createBuildingInfo(this.produce.factory, {
+        x: x + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: y + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
       });
       factoryObj.recipeId = this.recipe.ID; // 配方id
       this.factories.push(factoryObj);
-      begin += factoryObj.attributes.area[0] * 2;
+      x += factoryObj.attributes.area[0] * 2;
     }
-    beginY += this.factoryInfo.attributes.area[1] * 2 + 1;
-    this.generateOutputBelt(matrix, beginX, beginY); // 生成回路
+    y += this.factoryInfo.attributes.area[1] * 2 + 1;
+    this.generateOutputBelt(beginX, beginY, y); // 生成回路
     //副产回收
     if (this.getSurplus()) {
-      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1; // 总线点结束
+      const endY = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY; // 总线点结束
       this.buleprint.belt.generateBelt(
-        matrix,
-        { x: beginX + 3, y: beginY + 1, z: 0 },
-        { x: beginX + this.width - 2, y: y, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
+        { x: beginX + 3, y: y + 1, z: 0 },
+        { x: beginX + this.width - 2, y: endY, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
         ["x", "z", "y"],
         "x"
       );
@@ -663,29 +673,29 @@ class BuildingUnit {
   }
 
   // 生成化工厂
-  generateChemicalPlant(matrix, beginX, beginY) {
+  generateChemicalPlant(beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    let begin = beginX;
+    let x = beginX;
+    let y = beginY + 2;
     // 生成建筑
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
-        x: begin + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
-        y: beginY + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+      const factoryObj = this.buleprint.createBuildingInfo(this.produce.factory, {
+        x: x + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: y + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
       });
       factoryObj.recipeId = this.recipe.ID; // 配方id
       this.factories.push(factoryObj);
-      begin += factoryObj.attributes.area[0] * 2;
+      x += factoryObj.attributes.area[0] * 2;
     }
-    beginY += this.factoryInfo.attributes.area[1] * 2 + 1;
-    this.generateOutputBelt(matrix, beginX, beginY, ["y", "z", "x"], "x"); // 生成回路
+    y += this.factoryInfo.attributes.area[1] * 2 + 1;
+    this.generateOutputBelt(beginX, beginY, y, ["y", "z", "x"], "x"); // 生成回路
     //副产回收
     if (this.getSurplus()) {
-      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1; // 总线点结束
+      const endY = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1; // 总线点结束
       this.buleprint.belt.generateBelt(
-        matrix,
-        { x: beginX + 3, y: beginY + 1, z: 0 },
-        { x: beginX + this.width - 2, y: y, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
+        { x: beginX + 3, y: y + 1, z: 0 },
+        { x: beginX + this.width - 2, y: endY, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
         ["x", "z", "y"],
         "x"
       );
@@ -695,95 +705,106 @@ class BuildingUnit {
   }
 
   // 熔炉、制造台
-  generateDefault(matrix, beginX, beginY) {
+  generateDefault(beginX, beginY) {
     // 对于建筑来讲，从传送带往下开始
-    let begin = beginX;
+    let x = beginX;
+    let y = beginY + 2;
     // 生成建筑
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
-      const factoryObj = this.buleprint.createBuildingInfo(matrix, this.produce.factory, {
-        x: begin + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
-        y: beginY + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
+      const factoryObj = this.buleprint.createBuildingInfo(this.produce.factory, {
+        x: x + Math.ceil(this.factoryInfo.attributes.area[0]), // 建筑宽度一半向上取整
+        y: y + Math.ceil(this.factoryInfo.attributes.area[1]), // 建筑高度一半向上取整
       });
       factoryObj.recipeId = this.recipe.ID; // 配方id
       this.factories.push(factoryObj);
-      begin += factoryObj.attributes.area[0] * 2;
+      x += factoryObj.attributes.area[0] * 2;
     }
-    beginY += this.factoryInfo.attributes.area[1] * 2;
+    y += this.factoryInfo.attributes.area[1] * 2;
     if (SMELTER.includes(this.produce.factory)) {
-      beginY += 1; // 熔炉需要多1格
+      y += 1; // 熔炉需要多1格
     }
 
-    this.generateOutputBelt(matrix, beginX, beginY); // 生成回路
+    this.generateOutputBelt(beginX, beginY, y); // 生成回路
     // 生成分拣器
   }
 
   /**
    * 生成主产物回路
-   * @param {*} matrix
    * @param {*} beginX
-   * @param {*} beginY
+   * @param {*} beginY 该行建筑的开始
+   * @param {*} realY 实际的开始
    * @param {*} priority 输入总线的带子优先级
    * @param {*} zDirection 输入总线的带子方向
    * @param {*} interval 建筑之间的间隔，对撞机为1，其它是0
    */
-  generateOutputBelt(matrix, beginX, beginY, priority = ["z", "y", "x"], zDirection = "y", interval = 0) {
+  generateOutputBelt(beginX, beginY, realY, priority = ["z", "y", "x"], zDirection = "y") {
     // 生成回路
     if (this.produce.item === this.buleprint.produce) {
-      this.buleprint.belt.generateBelt(matrix, { x: beginX + 1, y: beginY, z: 0 }, { x: beginX + this.width - 1, y: beginY, z: 0 }); // 最终产物进塔的第4个槽
+      this.buleprint.belt.generateBelt({ x: beginX + 1, y: realY, z: 0 }, { x: beginX + this.width - 1, y: realY, z: 0 }); // 最终产物进塔的第4个槽
     } else {
-      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 2; // 总线下方一格开始
+      let productBeginX = beginX + this.width - this.inserters.length;
+      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 2 + beginY; // 总线下方一格开始
       const z = this.buleprint.belt.getBeltIndex(this.getProduce().Name) + 1; // 从总线回收的带子，产物所在带子的z轴
-      this.buleprint.belt.generateBelt(matrix, { x: beginX + 1, y, z }, { x: beginX + this.width - 1, y: beginY, z: 0 }, priority, zDirection);
+      this.buleprint.belt.generateBelt({ x: beginX + 1, y, z }, { x: beginX + this.width - 1, y: realY, z: 0 }, priority, zDirection);
       this.buleprint.belt.generateBelt(
-        matrix,
-        { x: beginX + this.width - this.inserters.length + this.factories.length * interval - 1, y: beginY - 3, z: 0 }, // x:建筑右侧开始, y:建筑输出位置为第4格, z: 0
+        { x: productBeginX, y: realY - 3, z: 0 }, // x:建筑右侧开始, y:建筑输出位置为第4格, z: 0
         { x: beginX + this.width, y: y + 1, z, outputToSlot: 2 }, // 连接到总线
         ["x", "z", "y"], // 先横向
         "y" // 延y轴方向上升
       );
+      // 生成分拣器对接的带子
+      this.inserters.forEach((inserter, index) => {
+        if (inserter.length < 3) {
+          this.buleprint.belt.generateBelt(
+      
+            { x: productBeginX + index, y: realY - inserter.length, z: 0 },
+            { x: productBeginX + index, y: realY - 3, z: 0, outputToSlot: index === 0 ? undefined : 2 },
+            ["y", "z", "x"]
+          );
+        }
+      });
     }
   }
 
   // 最终产物进塔
-  generateProductBelt(matrix, beginX) {
-    let beginY = 6;
+  generateProductBelt(beginX, beginY) {
+    let y = beginY + 6;
     if (LAB.includes(this.produce.factory)) {
-      beginY = 8;
+      y = beginY + 8;
     } else if (CHEMICAL.includes(this.produce.factory)) {
-      beginY = 7;
+      y = beginY + 7;
     } else if (HADRON_COLLIDER === this.produce.factory) {
-      beginY = 8;
+      y = beginY + 8;
     }
     this.buleprint.belt.generateBelt(
-      matrix,
-      { x: beginX + this.width - 1, y: beginY, z: 0 },
+      { x: beginX + this.width - 1, y: y, z: 0 },
       { x: beginX + this.width + this.buleprint.stations[0].getLeftWidth(), y: 5, z: 0, stationSlot: 4 },
       ["y", "x", "z"]
     ); // 最终产物进塔的第4个槽
   }
 
   // 生成下游传送带
-  generateDownstream(matrix, beginX) {
-    const y = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 - 1 : ROW_HEIGHT_2 - 1;
+  generateDownstream(beginX, beginY) {
+    const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY;
     for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
       for (let x = 1; x <= this.width; x++) {
-        this.buleprint.belt.createBelt(matrix, z, { x: beginX + x, y, z: z + 1 });
+        this.buleprint.belt.createBelt(z, { x: beginX + x, y, z: z + 1 });
       }
     }
   }
 
   // 生成上游传送带
-  generateUpstream(matrix, beginX) {
+  generateUpstream(beginX, beginY) {
     for (let y = 0; y < this.buleprint.belt.belts.length; y++) {
       for (let x = this.width - 1; x >= 0; x--) {
-        this.buleprint.belt.createBelt(matrix, y + this.buleprint.belt.belts.length, { x: beginX + x, y: 2 - y, z: 0 });
+        this.buleprint.belt.createBelt(y + this.buleprint.belt.belts.length, { x: beginX + x, y: 2 - y + beginY, z: 0 });
       }
     }
   }
 
   // 生成副产带子
-  generateSurplusBelt(matrix, beginX) {
+  generateSurplusBelt(beginX, beginY) {
     // if (!surplusBeltCreated) {
     //   // 副产带子起点
     //   if (this.produce.factory === "微型粒子对撞机") {
@@ -793,33 +814,32 @@ class BuildingUnit {
     //   }
     // }
     if (this.buleprint.surplus) {
-      const y = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 - 1 : ROW_HEIGHT_2 - 1;
+      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY;
       const z = this.buleprint.belt.belts.length + 1;
       for (let x = 0; x < this.width; x++) {
-        this.buleprint.belt.createBelt(matrix, z + this.buleprint.belt.belts.length, { x: beginX + x, y, z }); // 副产带子在最后
+        this.buleprint.belt.createBelt(z + this.buleprint.belt.belts.length, { x: beginX + x, y, z }); // 副产带子在最后
       }
     }
   }
   // 生成建筑
-  generate(matrix, beginX) {
-    let beginY = 2; // 建筑从3开始，由于计算偏移时会向上取整，所以虽然是第4行，但是仍然从3开始
+  generate(beginX, beginY) {
     switch (this.produce.factory) {
       case "矩阵研究站":
       case "自演化研究站":
-        this.generateLab(matrix, beginX, beginY);
+        this.generateLab(beginX, beginY);
         break;
       case "微型粒子对撞机":
-        this.generateHadronCollider(matrix, beginX, beginY);
+        this.generateHadronCollider(beginX, beginY);
         break;
       case "原油精炼厂":
-        this.generateOilRefinery(matrix, beginX, beginY);
+        this.generateOilRefinery(beginX, beginY);
         break;
       case "化工厂":
       case "量子化工厂":
-        this.generateChemicalPlant(matrix, beginX, beginY);
+        this.generateChemicalPlant(beginX, beginY);
         break;
       default:
-        this.generateDefault(matrix, beginX, beginY);
+        this.generateDefault(beginX, beginY);
     }
   }
 
@@ -936,7 +956,7 @@ class StationUnit {
   }
 
   // 生成上游传送带
-  generateUpstream(matrix, beginX) {
+  generateUpstream(beginX, beginY) {
     let branchEnd = 0;
     if (this.stationIndex === 0) {
       // 第一个塔需要将总线分叉并下沉到1层
@@ -944,50 +964,50 @@ class StationUnit {
       branchEnd = (this.buleprint.proliferatorLevel > 0 ? 5 : 0) + 3;
     }
 
-    const y = 1;
+    const y = beginY + 1;
     for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
       for (let x = this.width - 1; x >= branchEnd - 1; x--) {
-        this.buleprint.belt.createBelt(matrix, z + this.buleprint.belt.belts.length, { x: beginX + x, y, z: z + 1 });
+        this.buleprint.belt.createBelt(z + this.buleprint.belt.belts.length, { x: beginX + x, y, z: z + 1 });
       }
     }
     if (this.stationIndex === 0) {
       this.buleprint.belt.belts.forEach((_, z) => {
-        this.buleprint.belt.connectBelt(matrix, z + this.buleprint.belt.belts.length, { x: beginX + branchEnd - 3 - 1, y: 2 - z, z: 0 }, ["y", "z", "x"]);
+        this.buleprint.belt.connectBelt(z + this.buleprint.belt.belts.length, { x: beginX + branchEnd - 3 - 1, y: 2 - z, z: 0 }, ["y", "z", "x"]);
       });
     }
   }
 
   // 生成下游，从左到右生成
-  generateDownstream(matrix, beginX) {
-    const y = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 - 1 : ROW_HEIGHT_2 - 1;
+  generateDownstream(beginX, beginY) {
+    const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY;
     for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
       for (let x = 0; x < this.width; x++) {
-        this.buleprint.belt.createBelt(matrix, z, { x: beginX + x, y, z: z + 1 });
+        this.buleprint.belt.createBelt(z, { x: beginX + x, y, z: z + 1 });
       }
     }
   }
 
   // 生成副产带子
-  generateSurplusBelt(matrix, beginX) {
+  generateSurplusBelt(beginX, beginY) {
     if (this.stationIndex === 0 && this.buleprint.surplus) {
       // 副产不参与生产，从右下入塔
-      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 4;
-      const [belt] = this.buleprint.belt.createBelt(matrix, this.buleprint.belt.belts.length * 2 + 1, {
+      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 4 + beginY;
+      const [belt] = this.buleprint.belt.createBelt(this.buleprint.belt.belts.length * 2 + 1, {
         x: beginX,
         y: (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1,
         z: this.buleprint.belt.belts.length + 1,
       });
-      this.buleprint.belt.generateBelt(matrix, belt.localOffset[0], { x: beginX + this.getLeftWidth(), y, z: 0, stationSlot: 3 }, ["z", "y", "x"], "y");
+      this.buleprint.belt.generateBelt(belt.localOffset[0], { x: beginX + this.getLeftWidth(), y, z: 0, stationSlot: 3 }, ["z", "y", "x"], "y");
     }
   }
-  generate(matrix, beginX) {
-    let beginY = 1; // 物流塔从1开始，由于计算偏移时会向上取整，所以虽然是第2行，但是仍然从1开始
+  generate(beginX, beginY) {
+    let y = beginY + 1; // 物流塔从1开始，由于计算偏移时会向上取整，所以虽然是第2行，但是仍然从1开始
     let stationBeginX = beginX + this.getLeftWidth();
     // 生成建筑
     const stationInfo = buildings[STATION];
-    this.stationObj = this.buleprint.createBuildingInfo(matrix, stationInfo.itemName, {
+    this.stationObj = this.buleprint.createBuildingInfo(stationInfo.itemName, {
       x: stationBeginX + Math.ceil(stationInfo.attributes.area[0]), // 建筑宽度一半向上取整;
-      y: beginY + Math.ceil(stationInfo.attributes.area[1]), //建筑中心点，建筑高度的一半
+      y: y + Math.ceil(stationInfo.attributes.area[1]), //建筑中心点，建筑高度的一半
     });
     // 设置配方
     this.items.forEach((item, i) => {
@@ -1113,8 +1133,8 @@ class BeltUnit {
    * @param {*} i
    * @returns
    */
-  createBelt(matrix, i, localOffset) {
-    const belt = this.buleprint.createBuildingInfo(matrix, BELT_LEVEL[this.buleprint.beltLevel], localOffset);
+  createBelt(i, localOffset) {
+    const belt = this.buleprint.createBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], localOffset);
     const last = this.beltLinks[i];
     if (last) {
       // 不是环线带起点时，连接到上一个带子
@@ -1134,16 +1154,16 @@ class BeltUnit {
    * @param {*} zDirection 'z'
    * @param {*} zDirectForward 升降提前几格
    */
-  generateBelt(matrix, begin, end, priority = ["x", "y", "z"], zDirection = "x", zDirectForward = 1) {
+  generateBelt(begin, end, priority = ["x", "y", "z"], zDirection = "x", zDirectForward = 1) {
     let current = begin;
-    const belts = [];
     let zDirectionAdded = false;
     let lastDirection = priority[0]; // 上一次的方向
     let tmpI;
     let belt;
     let last =
       this.buleprint.getBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], begin) ||
-      this.buleprint.createBuildingInfo(matrix, BELT_LEVEL[this.buleprint.beltLevel], begin); // 起点
+      this.buleprint.createBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], begin); // 起点
+    const belts = [last];
     for (let i of priority) {
       while (Math.round(current[i]) !== Math.round(end[i])) {
         tmpI = i;
@@ -1170,7 +1190,7 @@ class BeltUnit {
         }
         belt =
           this.buleprint.getBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], cursorOffset) ||
-          this.buleprint.createBuildingInfo(matrix, BELT_LEVEL[this.buleprint.beltLevel], cursorOffset);
+          this.buleprint.createBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], cursorOffset);
         last.outputObjIdx = belt;
         if (tmpI !== "z" && i !== "z" && lastDirection !== i) {
           // 带子转弯
@@ -1197,16 +1217,16 @@ class BeltUnit {
       belts[belts.length - 2].outputToSlot = 2;
     } else if (end.stationSlot != null) {
       // 结束点是物流塔
-      const station = matrix[end.y][end.x].find((item) => item.itemName === STATION);
+      const station = this.buleprint.matrix[end.y][end.x].find((item) => item.itemName === STATION);
       console.log(station);
       if (station) {
-        const belt1 = this.buleprint.createBuildingInfo(matrix, BELT_LEVEL[this.buleprint.beltLevel], {
+        const belt1 = this.buleprint.createBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], {
           x: end.x + 1,
           y: end.y,
           z: end.z,
         });
         belt.outputObjIdx = belt1;
-        const belt2 = this.buleprint.createBuildingInfo(matrix, BELT_LEVEL[this.buleprint.beltLevel], {
+        const belt2 = this.buleprint.createBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], {
           x: end.x + 2,
           y: end.y,
           z: end.z,
@@ -1227,7 +1247,7 @@ class BeltUnit {
    * @param {*} priority 优先级 ['x', 'y', 'z']
    * @param {*} zDirection Z 轴下沉时的方向，通常是优先级最低的方向
    */
-  connectBelt(matrix, linkIndex, end, priority, zDirection = "x") {
+  connectBelt(linkIndex, end, priority, zDirection = "x") {
     const begin = this.beltLinks[linkIndex].localOffset[0];
     let current = begin;
     const belts = [];
@@ -1249,7 +1269,7 @@ class BeltUnit {
         } else if (Math.round(current[tmpI]) < Math.round(end[tmpI])) {
           cursorOffset[tmpI] = Math.round(cursorOffset[tmpI] + 1);
         }
-        const [belt] = this.createBelt(matrix, linkIndex, cursorOffset);
+        const [belt] = this.createBelt(linkIndex, cursorOffset);
         if (tmpI !== "z" && i !== "z" && lastDirection !== i) {
           // 带子转弯
           belt.yaw = last.yaw = [315, 315];

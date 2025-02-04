@@ -58,10 +58,8 @@ export class BlueprintBuilder {
     // 遍历矩阵，元素为空时表示空地，非空时表示建筑
     // 遍历时为建筑分配 index，从 0 开始，只有 index 为空时才分配，并将新分配 index 的建筑对象 加入到 buleprint.buildings 中
     let index = 0;
-    const height = this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2; // 回收模式为集装分拣器时，高度为11，否则为15
-    this.matrix.forEach((row, y) => {
-      const yOffset = Math.floor(y / height);
-      row.forEach((building, x) => {
+    this.matrix.forEach((row) => {
+      row.forEach((building) => {
         if (building) {
           if (building.length) {
             building.forEach((b) => {
@@ -73,9 +71,6 @@ export class BlueprintBuilder {
                   b.localOffset[1].y = b.localOffset[0].y;
                   b.localOffset[1].z = b.localOffset[0].z;
                 }
-                // 处理建筑的坐标偏移
-                b.localOffset[0].y += yOffset * height;
-                b.localOffset[1].y += yOffset * height;
               }
             });
           } else if (building.index === -1) {
@@ -86,9 +81,6 @@ export class BlueprintBuilder {
               building.localOffset[1].y = building.localOffset[0].y;
               building.localOffset[1].z = building.localOffset[0].z;
             }
-            // 处理建筑的坐标偏移
-            building.localOffset[0].y += yOffset * height;
-            building.localOffset[1].y += yOffset * height;
           }
         }
       });
