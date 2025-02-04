@@ -95,7 +95,7 @@ function pushMatrix(matrix, buildings) {
       x++
     ) {
       for (
-        let y = Math[BELT_LEVEL.includes(building.itemName) ? "ceil" : "floor"](building.localOffset[0].y - building.attributes.area[1]);
+        let y = Math[building.attributes.area[1] < 1 ? "ceil" : "floor"](building.localOffset[0].y - building.attributes.area[1]);
         y < Math.ceil(building.localOffset[0].y + building.attributes.area[1]);
         y++
       ) {
@@ -757,7 +757,6 @@ class BuildingUnit {
       this.inserters.forEach((inserter, index) => {
         if (inserter.length < 3) {
           this.buleprint.belt.generateBelt(
-      
             { x: productBeginX + index, y: realY - inserter.length, z: 0 },
             { x: productBeginX + index, y: realY - 3, z: 0, outputToSlot: index === 0 ? undefined : 2 },
             ["y", "z", "x"]
@@ -961,10 +960,10 @@ class StationUnit {
     if (this.stationIndex === 0) {
       // 第一个塔需要将总线分叉并下沉到1层
       // 从右往左生成，最后5格为喷涂机，然后是3格带子，之后全是直带
-      branchEnd = (this.buleprint.proliferatorLevel > 0 ? 5 : 0) + 3;
+      branchEnd = (this.buleprint.proliferatorLevel > 0 ? 4 : 0) + 3;
     }
 
-    const y = beginY + 1;
+    let y = beginY + 1;
     for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
       for (let x = this.width - 1; x >= branchEnd - 1; x--) {
         this.buleprint.belt.createBelt(z + this.buleprint.belt.belts.length, { x: beginX + x, y, z: z + 1 });
@@ -972,8 +971,19 @@ class StationUnit {
     }
     if (this.stationIndex === 0) {
       this.buleprint.belt.belts.forEach((_, z) => {
-        this.buleprint.belt.connectBelt(z + this.buleprint.belt.belts.length, { x: beginX + branchEnd - 3 - 1, y: 2 - z, z: 0 }, ["y", "z", "x"]);
+        this.buleprint.belt.connectBelt(z + this.buleprint.belt.belts.length, { x: beginX, y: 2 - z, z: 0 }, ["y", "z", "x"]);
       });
+      if (this.buleprint.proliferatorLevel > 0) {
+        for (y = 0; y < this.buleprint.belt.belts.length; y++) {
+          this.buleprint.createBuildingInfo("喷涂机", { x: beginX + 3, y: 2 - y, z: 0 });
+        }
+        this.buleprint.belt.generateBelt(
+          { x: beginX + this.getLeftWidth(), y: beginY + 4, z: 0, stationSlot: 5, storageIdx: 1 }, // 物流塔槽位：右上1点方向为0，逆时针
+          { x: beginX + 4, y: 3 - this.buleprint.belt.belts.length, z: 1 },
+          ["x", "z", "y"],
+          "y"
+        );
+      }
     }
   }
 
@@ -1164,6 +1174,28 @@ class BeltUnit {
       this.buleprint.getBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], begin) ||
       this.buleprint.createBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], begin); // 起点
     const belts = [last];
+    if (begin.stationSlot != null) {
+      // 起点是物流塔
+      const station = this.buleprint.matrix[begin.y][begin.x].find((item) => item.itemName === STATION);
+      if (station) {
+        const belt1 = this.buleprint.createBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], {
+          x: begin.x + (begin.x > end.x ? 2 : -2),
+          y: begin.y,
+          z: begin.z,
+        });
+        const belt2 = this.buleprint.createBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], {
+          x: begin.x + (begin.x > end.x ? 1 : -1),
+          y: begin.y,
+          z: begin.z,
+        });
+        belt1.inputFromSlot = begin.stationSlot; // 物流塔的输出槽
+        belt1.inputObjIdx = station;
+        belt1.outputObjIdx = belt2;
+        belt2.outputObjIdx = last;
+        station.parameters.slots[begin.stationSlot].dir = 1; // 输出
+        station.parameters.slots[begin.stationSlot].storageIdx = begin.storageIdx;
+      }
+    }
     for (let i of priority) {
       while (Math.round(current[i]) !== Math.round(end[i])) {
         tmpI = i;
@@ -1218,7 +1250,6 @@ class BeltUnit {
     } else if (end.stationSlot != null) {
       // 结束点是物流塔
       const station = this.buleprint.matrix[end.y][end.x].find((item) => item.itemName === STATION);
-      console.log(station);
       if (station) {
         const belt1 = this.buleprint.createBuildingInfo(BELT_LEVEL[this.buleprint.beltLevel], {
           x: end.x + 1,
