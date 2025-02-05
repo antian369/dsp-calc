@@ -58,36 +58,15 @@ export class BlueprintBuilder {
     // 遍历矩阵，元素为空时表示空地，非空时表示建筑
     // 遍历时为建筑分配 index，从 0 开始，只有 index 为空时才分配，并将新分配 index 的建筑对象 加入到 buleprint.buildings 中
     let index = 0;
-    this.matrix.forEach((row) => {
-      row.forEach((building) => {
-        if (building) {
-          if (building.length) {
-            building.forEach((b) => {
-              if (b.index === -1) {
-                b.index = index++;
-                this.dspBuleprint.buildings.push(b);
-                if (!inserterIds.includes(b.itemId)) {
-                  b.localOffset[1].x = b.localOffset[0].x;
-                  b.localOffset[1].y = b.localOffset[0].y;
-                  b.localOffset[1].z = b.localOffset[0].z;
-                }
-              }
-            });
-          } else if (building.index === -1) {
-            building.index = index++;
-            this.dspBuleprint.buildings.push(building);
-            if (!inserterIds.includes(building.itemId)) {
-              building.localOffset[1].x = building.localOffset[0].x;
-              building.localOffset[1].y = building.localOffset[0].y;
-              building.localOffset[1].z = building.localOffset[0].z;
-            }
-          }
-        }
-      });
-    });
-    // 最后删除所有建筑的 attribute
+    this.dspBuleprint.buildings = Array.from(this.buleprint.buildingsMap.values());
     this.dspBuleprint.buildings.forEach((building) => {
+      building.index = index++;
       delete building.attribute;
+      if (!inserterIds.includes(building.itemId)) {
+        building.localOffset[1].x = building.localOffset[0].x;
+        building.localOffset[1].y = building.localOffset[0].y;
+        building.localOffset[1].z = building.localOffset[0].z;
+      }
     });
     let unLinked = this.dspBuleprint.buildings.filter((f) => typeof f.inputObjIdx === "object");
     while (unLinked.length) {
