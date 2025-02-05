@@ -905,11 +905,11 @@ class StationUnit {
     if (this.buleprint.recycleMode === 1) {
       if (this.stationIndex === 0) {
         // 第一个塔左下为喷涂、左中为主产物，左上为副产；固定有喷涂剂。
-        const proliferatorWidth = this.hasProliferator() ? 4 : 0; // 喷涂机宽度
+        const proliferatorWidth = this.hasProliferator() ? 5 : 1; // 喷涂机宽度
         const masterWidth = 1; // 主产物
         let surplusWidth = 0; // 副产占用宽度，默认无时为0
         if (!this.buleprint.surplusJoinProduct) {
-          surplusWidth = 2
+          surplusWidth = 2;
         }
         return Math.max(proliferatorWidth, masterWidth, surplusWidth);
       } else {
@@ -928,8 +928,8 @@ class StationUnit {
       // 第三个带子一定是原料
       const top = this.items[2] ? Math.max(this.items[2].inserter.length + 1, 3) : 0;
       // 按最后两个产物的最大长度
-      const bottom = this.items[3] ? Math.max(this.items[3].inserter.length + 2, 4) : 0;
-      let width = Math.max(top, bottom) + 1; // 多1格，物流塔宽度取整
+      const bottom = this.items[3] ? Math.max(this.items[3].inserter.length + 1, 4) : 0;
+      let width = Math.max(top, bottom); // 多1格，物流塔宽度取整
       if (this.stationIndex === 0 && this.buleprint.surplusJoinProduct) {
         // 有副产参与生产
         width += 1;
@@ -962,7 +962,6 @@ class StationUnit {
     let branchEnd = 0;
     if (this.stationIndex === 0) {
       // 第一个塔需要将总线分叉并下沉到1层
-      // 从右往左生成，最后5格为喷涂机，然后是3格带子，之后全是直带
       branchEnd = (this.buleprint.proliferatorLevel > 0 ? 4 : 0) + 3;
     }
 
@@ -978,11 +977,11 @@ class StationUnit {
       });
       if (this.buleprint.proliferatorLevel > 0) {
         for (y = 0; y < this.buleprint.belt.belts.length; y++) {
-          this.buleprint.createBuildingInfo("喷涂机", { x: beginX + 3, y: 2 - y, z: 0 });
+          this.buleprint.createBuildingInfo("喷涂机", { x: beginX + 2, y: 2 - y, z: 0 });
         }
         this.buleprint.belt.generateBelt(
           { x: beginX + this.getLeftWidth(), y: beginY + 4, z: 0, stationSlot: 5, storageIdx: 1 }, // 物流塔槽位：右上1点方向为0，逆时针
-          { x: beginX + 4, y: 3 - this.buleprint.belt.belts.length, z: 1 },
+          { x: beginX + this.getLeftWidth() - 2, y: 3 - this.buleprint.belt.belts.length, z: 1 },
           ["x", "z", "y"],
           "y"
         );
@@ -1003,14 +1002,38 @@ class StationUnit {
   // 生成副产带子
   generateSurplusBelt(beginX, beginY) {
     if (this.stationIndex === 0 && this.buleprint.surplus) {
-      // 副产不参与生产，从右下入塔
-      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 4 + beginY;
+      // 副产开始的带子
       const [belt] = this.buleprint.belt.createBelt(this.buleprint.belt.belts.length * 2 + 1, {
         x: beginX,
         y: (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1,
         z: this.buleprint.belt.belts.length + 1,
       });
-      this.buleprint.belt.generateBelt(belt.localOffset[0], { x: beginX + this.getLeftWidth(), y, z: 0, stationSlot: 3 }, ["z", "y", "x"], "y");
+      if (this.buleprint.surplusCount > 0) {
+        // 副产不参与生产 或 溢出，从左上入塔
+        const y = this.buleprint.height - 4 + beginY;
+        this.buleprint.belt.generateBelt(belt.localOffset[0], { x: beginX + this.getLeftWidth(), y, z: 0, stationSlot: 3 }, ["z", "y", "x"], "y");
+      } else if (this.buleprint.surplusCount === 0 && this.buleprint.surplusJoinProduct) {
+        // 副产参与生产，数量正好，集装后从右侧直接接入总线
+        const busZ = this.buleprint.belt.getBeltIndex(this.buleprint.surplus);
+        this.buleprint.belt.generateBelt(belt.localOffset[0], { x: beginX + this.width, y: beginY + 1, z: busZ, outputToSlot: 2 }, ["x", "y", "z"], "y");
+        // 集装分拣
+        // todo...
+      } else {
+        // 副产参与生产且不足
+        this.buleprint.belt.generateBelt(
+          belt.localOffset[0],
+          { x: beginX + this.width, y: belt.localOffset[0].y, z: 4, outputToSlot: 2 },
+          ["x", "y", "z"],
+          "y"
+        );
+        this.buleprint.belt.generateBelt(
+          { x: beginX + this.width, y: belt.localOffset[0].y, z: 4 },
+          { x: beginX + this.width - 1, y: beginY + 4, z: 6, outputToSlot: 2 },
+          ["y", "z", "x"],
+          "y",
+          1
+        );
+      }
     }
   }
   generate(beginX, beginY) {
