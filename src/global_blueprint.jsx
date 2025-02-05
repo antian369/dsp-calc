@@ -821,7 +821,7 @@ class BuildingUnit {
     if (this.buleprint.surplus) {
       const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY;
       const z = this.buleprint.belt.belts.length + 1;
-      for (let x = 0; x < this.width; x++) {
+      for (let x = 1; x <= this.width; x++) {
         this.buleprint.belt.createBelt(z + this.buleprint.belt.belts.length, { x: beginX + x, y, z }); // 副产带子在最后
       }
     }
@@ -929,18 +929,18 @@ class StationUnit {
 
   getRightWidth() {
     if (this.buleprint.recycleMode === 1) {
-      const top = this.items.length > 3 ? this.items[3].inserter.length + 2 : 0;
+      const top = this.items.length > 2 ? this.items[2].inserter.length + 2 : 0;
       if (this.stationIndex === 0 && this.buleprint.surplus) {
         // 有副产，都从右下回收，宽度是1，可以直接返回第4个产物的宽度
         return Math.max(top, 1);
       }
       // 否则，按最后两个产物的最大长度
-      let bottom = this.items?.[2]?.type === 1 ? Math.max(this.items[2].inserter.length, 3) : 0;
-      if (this.stationIndex === 0 && this.items?.[2]?.item === this.buleprint.surplus) {
+      let bottom = this.items?.[3]?.type === 1 ? Math.max(this.items[3].inserter.length, 4) : 0;
+      if (this.stationIndex === 0 && this.items?.[3]?.item === this.buleprint.surplus) {
         // 副产不参与生产，从右下入塔
         bottom = 1;
       }
-      return Math.max(top, bottom);
+      return Math.max(top, bottom) + 1; // 多1格，物流塔宽度取整
     } else {
       console.log("todo ...");
     }
@@ -1055,33 +1055,39 @@ class StationUnit {
 
   // 生成物流塔的输出1
   generateOutput1(beginX, beginY) {
-    const busZ = this.buleprint.belt.getBeltIndex(this.items[0].item) + 1; // 总线带子Z
+    const itemIndex = 0;
+    const busZ = this.buleprint.belt.getBeltIndex(this.items[itemIndex].item) + 1; // 总线带子Z
     const x = beginX + this.getLeftWidth(); // 主线回收的起点
     const y = beginY + 2; // 主线回收的起点
-    const z = 3; // 第3层分拣
+    const z = 6; // 第6层分拣
     // 主线回收
-    const recycMidX = Math.max(x - 3, x - this.items[0].inserter.length - 2); // 回收中点
+    const recycMidX = Math.max(x - 3, x - this.items[itemIndex].inserter.length - 2); // 回收中点
+    const recycEndX = recycMidX + this.items[itemIndex].inserter.length; // 回收终点
+    const recycMidZ = 5; // 第5层输入原料
     const recycMidY = y + 2; // 回收中点，也是原料连接点
     const recycEndY = y + 4; // 回收终点
     this.buleprint.belt.generateBelt({ x, y, z: busZ }, { x: recycMidX, y, z: 0 }, ["z", "x", "y"], "x"); // 终点至少4格，或分拣器长度+2
-    this.buleprint.belt.generateBelt({ x: recycMidX, y, z: 0 }, { x: recycMidX, y: recycMidY, z: 2 }, ["z", "y", "x"], "y");
-    this.buleprint.belt.generateBelt({ x: recycMidX, y: recycMidY, z: 2 }, { x, y: recycEndY, z }, ["z", "y", "x"], "y");
+    this.buleprint.belt.generateBelt({ x: recycMidX, y, z: 0 }, { x: recycMidX, y: recycMidY, z: recycMidZ }, ["z", "y", "x"], "y");
+    this.buleprint.belt.generateBelt(
+      { x: recycMidX, y: recycMidY, z: recycMidZ },
+      { x: recycEndX, y: recycEndY, z }, //根据分拣器数量动态调整
+      ["z", "y", "x"],
+      "y"
+    );
     // 物流塔出口
-    const belts = this.buleprint.belt.generateBelt(
-      { x: x, y: recycMidY, z: 0, stationSlot: 5, storageIdx: 1, direct: 1 },
-      { x: recycMidX, y: recycMidY, z: 2, outputToSlot: 2 },
+    this.buleprint.belt.generateBelt(
+      { x: x, y: recycMidY, z: 0, stationSlot: 5, storageIdx: itemIndex + 1, direct: 1 },
+      { x: recycMidX, y: recycMidY, z: recycMidZ, outputToSlot: 2 },
       ["x", "z", "y"],
       "x",
       1 // 提前1格上升
     );
-    // belts[belts.length - 3].localOffset[0].x = Math.round(belts[belts.length - 2].localOffset[0].x) + 0.0016; // 修复上升带子拧麻花
-    belts[belts.length - 4].localOffset[0].x = Math.round(belts[belts.length - 3].localOffset[0].x) + 0.0032; // 修复上升带子拧麻花
     // 物流塔集装分拣
     // todo...
     // 输入总线的带子
-    this.buleprint.belt.generateBelt({ x, y: y + 1, z }, { x: recycMidX, y: y - 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "y");
+    this.buleprint.belt.generateBelt({ x: recycEndX, y: y + 1, z }, { x: recycMidX, y: y - 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "y");
     // 生成分拣器带子
-    this.items[0].inserter.forEach((inserter, index) => {
+    this.items[itemIndex].inserter.forEach((inserter, index) => {
       if (inserter.length < 3) {
         this.buleprint.belt.generateBelt(
           { x: recycMidX + 1 + index, y: recycEndY - inserter.length, z },
@@ -1093,69 +1099,64 @@ class StationUnit {
   }
 
   // 生成物流塔的输出2
-  generateOutput2() {
-    // const endX = beginX + this.width;
-    // const endY = beginY + this.buleprint.height - 1;
-    // const z = this.buleprint.belt.getBeltIndex(this.items[2].item) + 1;
-    // // 主线回收
-    // this.buleprint.belt.generateBelt(
-    //   { x: endX - this.getRightWidth(), y: endY - 1, z },
-    //   { x: endX - this.getRightWidth() + this.items[2].inserter.length, y: endY - 4, z: 0 },
-    //   ["z", "y", "x"],
-    //   "y"
-    // );
+  generateOutput2(beginX, beginY) {
+    const itemIndex = 1;
+    const busZ = this.buleprint.belt.getBeltIndex(this.items[itemIndex].item) + 1; // 总线带子Z
+    const x = beginX + this.getLeftWidth() - 1; // 主线回收的起点
+    const y = beginY + this.buleprint.height - 2; // 主线回收的起点
+    const z = 4; // 第4层分拣
+    // 主线回收
+    const recycMidY = y - 3;
+    const recycMidX = x - 2;
+    this.buleprint.belt.generateBelt({ x, y, z: busZ }, { x: recycMidX, y, z: busZ }, ["x", "z", "y"], "x");
+    this.buleprint.belt.generateBelt({ x: recycMidX, y, z: busZ }, { x, y: recycMidY, z }, ["z", "y", "x"], "y");
     // // 物流塔出口
-    // this.buleprint.belt.generateBelt(
-    //   { x: endX - this.getRightWidth() - 1, y: endY - 3, z: 0, stationSlot: 11, storageIdx: 3, direct: -1 },
-    //   { x: endX - this.getRightWidth(), y: endY - 3, z: 0, outputToSlot: 2 }
-    // );
-    // // // 输入总线的带子
-    // const belts = this.buleprint.belt.generateBelt(
-    //   { x: endX - this.getRightWidth() + 1, y: endY - 1, z: 0 },
-    //   { x: endX - this.getRightWidth() + this.items[2].inserter.length + 1, y: endY - 3, z },
-    //   ["x", "z", "y"],
-    //   "y"
-    // );
-    // belts[belts.length - 4].localOffset[0].y += 0.0032; // 修复上升带子拧麻花
-    // this.buleprint.belt.generateBelt(
-    //   { x: endX - this.getRightWidth() + this.items[2].inserter.length + 1, y: endY - 3, z },
-    //   { x: endX - this.getRightWidth() + this.items[2].inserter.length, y: endY, z, outputToSlot: 2 },
-    //   ["x", "z", "y"],
-    //   "y"
-    // );
-    // // // 生成分拣器带子
-    // this.items[2].inserter.forEach((inserter, index) => {
-    //   if (inserter.length < 3) {
-    //     this.buleprint.belt.generateBelt(
-    //       { x: endX - this.getRightWidth() + 1 + index, y: endY - 1 - inserter.length, z: 0 },
-    //       { x: endX - this.getRightWidth() + 1 + index, y: endY - 4, z: 0, outputToSlot: 2 },
-    //       ["y", "z", "x"]
-    //     );
-    //   }
-    // });
+    this.buleprint.belt.generateBelt(
+      { x: x + 1, y: y - 2, z: 0, stationSlot: 3, storageIdx: itemIndex + 1, direct: 1, station: this.stationObj },
+      { x: x - 1, y: y, z: busZ, outputToSlot: 2 },
+      ["x", "z", "y"],
+      "y"
+    );
+    // 物流塔集装分拣
+    // todo...
+    // 输入总线的带子
+    const inputBeginX = x - this.items[itemIndex].inserter.length + 1; // 输入起点
+    this.buleprint.belt.generateBelt({ x: inputBeginX, y, z }, { x: x + 2, y: y + 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "x");
+    // 生成分拣器带子
+    this.items[itemIndex].inserter.forEach((inserter, index) => {
+      if (inserter.length < 3) {
+        this.buleprint.belt.generateBelt({ x: inputBeginX + index, y: recycMidY + inserter.length, z }, { x: inputBeginX + index, y, z, outputToSlot: 2 });
+      }
+      // 分拣器
+      // todo...
+    });
   }
 
   // 生成物流塔的输出3
   generateOutput3(beginX, beginY) {
-    if (this.items.length < 3) {
-      return;
-    }
-    const busZ = this.buleprint.belt.getBeltIndex(this.items[2].item) + 1; // 总线带子Z
+    const itemIndex = 2;
+    const busZ = this.buleprint.belt.getBeltIndex(this.items[itemIndex].item) + 1; // 总线带子Z
     const x = beginX + this.width - this.getRightWidth(); // 主线回收的起点
     const y = beginY + this.buleprint.height - 2; // 主线回收的起点
-    const z = 3; // 第3层分拣
+    const z = 6; // 第6层分拣
     // 主线回收
-    const recycMidX = Math.max(x + 3, x + this.items[2].inserter.length + 1); // 回收中点
+    const recycMidX = Math.max(x + 3, x + this.items[itemIndex].inserter.length + 1); // 回收中点
+    const recycEndX = recycMidX - this.items[itemIndex].inserter.length; // 回收终点
     const recycMidY = y - 2; // 回收中点，也是原料连接点
+    const recycMidZ = 5; // 第5层输入原料
     const recycEndY = y - 4; // 回收终点
     this.buleprint.belt.generateBelt({ x, y, z: busZ }, { x: recycMidX, y, z: 0 }, ["z", "x", "y"], "x"); // 终点至少4格，或分拣器长度+2
-    const belts = this.buleprint.belt.generateBelt({ x: recycMidX, y, z: 0 }, { x: recycMidX, y: recycMidY, z: 2 }, ["z", "y", "x"], "y");
-    belts[belts.length - 4].localOffset[0].y = Math.round(belts[belts.length - 2].localOffset[0].y) + 0.0032; // 修复上升带子拧麻花
-    this.buleprint.belt.generateBelt({ x: recycMidX, y: recycMidY, z: 2 }, { x, y: recycEndY, z }, ["z", "y", "x"], "y");
+    this.buleprint.belt.generateBelt({ x: recycMidX, y, z: 0 }, { x: recycMidX, y: recycMidY, z: recycMidZ }, ["z", "y", "x"], "y");
+    this.buleprint.belt.generateBelt(
+      { x: recycMidX, y: recycMidY, z: recycMidZ },
+      { x: recycEndX, y: recycEndY, z }, //根据分拣器数量动态调整
+      ["z", "y", "x"],
+      "y"
+    );
     // 物流塔出口
     this.buleprint.belt.generateBelt(
-      { x, y: recycMidY, z: 0, stationSlot: 11, storageIdx: 3, direct: -1, station: this.stationObj },
-      { x: recycMidX, y: recycMidY, z: 2, outputToSlot: 2 },
+      { x, y: recycMidY, z: 0, stationSlot: 11, storageIdx: itemIndex + 1, direct: -1, station: this.stationObj },
+      { x: recycMidX, y: recycMidY, z: recycMidZ, outputToSlot: 2 },
       ["x", "z", "y"],
       "x",
       1 // 提前1格上升
@@ -1163,9 +1164,9 @@ class StationUnit {
     // 物流塔集装分拣
     // todo...
     // 输入总线的带子
-    this.buleprint.belt.generateBelt({ x, y: y - 1, z }, { x: recycMidX, y: y + 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "y");
+    this.buleprint.belt.generateBelt({ x: recycEndX, y: y - 1, z }, { x: recycMidX, y: y + 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "y");
     // 生成分拣器带子
-    this.items[0].inserter.forEach((inserter, index) => {
+    this.items[itemIndex].inserter.forEach((inserter, index) => {
       if (inserter.length < 3) {
         this.buleprint.belt.generateBelt(
           { x: recycMidX - 1 - index, y: recycEndY + inserter.length, z },
@@ -1178,7 +1179,38 @@ class StationUnit {
   }
 
   // 生成物流塔的输出4
-  generateOutput4() {}
+  generateOutput4(beginX, beginY) {
+    const itemIndex = 3;
+    const busZ = this.buleprint.belt.getBeltIndex(this.items[itemIndex].item) + 1; // 总线带子Z
+    const x = beginX + this.width - this.getRightWidth() + 1; // 主线回收的起点
+    const y = beginY + 2; // 主线回收的起点
+    const z = 4; // 第4层分拣
+    // 主线回收
+    const recycMidY = y + 3;
+    const recycMidX = x + 2;
+    this.buleprint.belt.generateBelt({ x, y, z: busZ }, { x: recycMidX, y, z: busZ }, ["x", "z", "y"], "x");
+    this.buleprint.belt.generateBelt({ x: recycMidX, y, z: busZ }, { x, y: recycMidY, z }, ["z", "y", "x"], "y");
+    // 物流塔出口
+    this.buleprint.belt.generateBelt(
+      { x: x - 1, y: y + 2, z: 0, stationSlot: 9, storageIdx: itemIndex + 1, direct: -1, station: this.stationObj },
+      { x: x + 1, y: y, z: busZ, outputToSlot: 2 },
+      ["x", "z", "y"],
+      "y"
+    );
+    // 物流塔集装分拣
+    // todo...
+    // 输入总线的带子
+    const inputBeginX = x + this.items[itemIndex].inserter.length - 1; // 输入起点
+    this.buleprint.belt.generateBelt({ x: inputBeginX, y, z }, { x: x - 2, y: y - 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "x");
+    // 生成分拣器带子
+    this.items[itemIndex].inserter.forEach((inserter, index) => {
+      if (inserter.length < 3) {
+        this.buleprint.belt.generateBelt({ x: x + index, y: recycMidY - inserter.length, z }, { x: x + index, y, z, outputToSlot: 2 });
+      }
+      // 分拣器
+      // todo...
+    });
+  }
 }
 
 /**
@@ -1316,7 +1348,14 @@ class BeltUnit {
     let current = begin;
     let zDirectionAdded = false;
     let lastDirection = priority[0]; // 上一次的方向
-    const levelOffset = begin[zDirection] - end[zDirection]; // 水平方向
+    const vertical = begin.z > end.z ? "down" : "up"; // 垂直方向
+    let factor = 0.0016; // 升降时的位移因子
+    if (
+      (begin[zDirection] < end[zDirection] && begin.z < end.z) || // 向东 或 北 上升
+      (begin[zDirection] > end[zDirection] && begin.z > end.z) // 向西 或 南 下降
+    ) {
+      factor = -0.0016;
+    }
     let tmpI;
     let belt;
     let last =
@@ -1381,12 +1420,10 @@ class BeltUnit {
         }
         if (tmpI === "z") {
           // 增加偏移
-          if (levelOffset > 0) {
-            // 顺向升降
-            last.localOffset[0][zDirection] += last.localOffset[0].z * 0.0017;
+          if (vertical === "up") {
+            last.localOffset[0][zDirection] += (Math.round(end.z - cursorOffset.z) + 1) * factor;
           } else {
-            // 逆向升降
-            belt.localOffset[0][zDirection] += belt.localOffset[0].z * 0.0017;
+            belt.localOffset[0][zDirection] += (Math.round(cursorOffset.z - end.z) + 1) * factor;
           }
         }
         belts.push(belt);
