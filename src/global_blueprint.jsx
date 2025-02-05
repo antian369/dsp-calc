@@ -297,7 +297,8 @@ class MixedConveyerBeltBuleprint {
     this.rawMaterial = rawMaterial;
     this.rowCount = rowCount;
     this.beltLevel = beltType;
-    this.inserterMixLevel = recycleType === 1 ? 3 : sorterType;
+    // this.inserterMixLevel = recycleType === 1 ? 3 : sorterType;
+    this.inserterMixLevel = sorterType;
     this.recycleMode = recycleType;
     this.stackCount = stackSize;
     this.floor = floor;
@@ -904,22 +905,17 @@ class StationUnit {
     if (this.buleprint.recycleMode === 1) {
       if (this.stationIndex === 0) {
         // 第一个塔左下为喷涂、左中为主产物，左上为副产；固定有喷涂剂。
-        const proliferatorWidth = this.hasProliferator() ? 5 : 0; // 喷涂机宽度
+        const proliferatorWidth = this.hasProliferator() ? 4 : 0; // 喷涂机宽度
         const masterWidth = 1; // 主产物
         let surplusWidth = 0; // 副产占用宽度，默认无时为0
-        if (this.buleprint.surplusJoinProduct) {
-          // 副产参与生产
-          surplusWidth = this.items[2].inserter.length + 2; // 第3个就是副产
-          if (this.buleprint.surplusCount < 0) {
-            // 副产不够时，左侧需要加1；副产够的话从右下入塔，因此不占左侧输入
-            surplusWidth += 1;
-          } // else：副产正好与溢出时不需要增加
-        } // else if (!this.buleprint.surplusJoinProduct && this.buleprint.surplus) // 副产不参与生产，直接从右下入塔
+        if (!this.buleprint.surplusJoinProduct) {
+          surplusWidth = 2
+        }
         return Math.max(proliferatorWidth, masterWidth, surplusWidth);
       } else {
         // 不是第一个塔，按前两个出口的最大长度
-        const top = Math.max(this.items[0].inserter.length + 1, 3); // 至少3格
-        const bottom = Math.max(this.items?.[1]?.inserter?.length || 0, 3); // 至少3格
+        const top = this.items[0] ? Math.max(this.items[0].inserter.length + 1, 3) : 0; // 至少3格
+        const bottom = this.items[1] ? Math.max(this.items?.[1]?.inserter?.length + 2, 4) : 0; // 至少4格
         return Math.max(top, bottom);
       }
     } else {
@@ -929,18 +925,16 @@ class StationUnit {
 
   getRightWidth() {
     if (this.buleprint.recycleMode === 1) {
-      const top = this.items.length > 2 ? this.items[2].inserter.length + 2 : 0;
-      if (this.stationIndex === 0 && this.buleprint.surplus) {
-        // 有副产，都从右下回收，宽度是1，可以直接返回第4个产物的宽度
-        return Math.max(top, 1);
+      // 第三个带子一定是原料
+      const top = this.items[2] ? Math.max(this.items[2].inserter.length + 1, 3) : 0;
+      // 按最后两个产物的最大长度
+      const bottom = this.items[3] ? Math.max(this.items[3].inserter.length + 2, 4) : 0;
+      let width = Math.max(top, bottom) + 1; // 多1格，物流塔宽度取整
+      if (this.stationIndex === 0 && this.buleprint.surplusJoinProduct) {
+        // 有副产参与生产
+        width += 1;
       }
-      // 否则，按最后两个产物的最大长度
-      let bottom = this.items?.[3]?.type === 1 ? Math.max(this.items[3].inserter.length, 4) : 0;
-      if (this.stationIndex === 0 && this.items?.[3]?.item === this.buleprint.surplus) {
-        // 副产不参与生产，从右下入塔
-        bottom = 1;
-      }
-      return Math.max(top, bottom) + 1; // 多1格，物流塔宽度取整
+      return width;
     } else {
       console.log("todo ...");
     }
@@ -1044,6 +1038,10 @@ class StationUnit {
   // 生成分拣器
   generateInserter(beginX, beginY) {
     if (this.stationIndex === 0) {
+      if (this.buleprint.surplus && this.buleprint.surplusJoinProduct) {
+        // 副产参与生产
+        this.items[2] && this.generateOutput3(beginX, beginY);
+      }
       this.items[3] && this.generateOutput4(beginX, beginY);
     } else {
       this.items[0] && this.generateOutput1(beginX, beginY);
@@ -1107,7 +1105,7 @@ class StationUnit {
     const z = 4; // 第4层分拣
     // 主线回收
     const recycMidY = y - 3;
-    const recycMidX = x - 2;
+    const recycMidX = x - Math.max(this.items[itemIndex].inserter.length, 2); // 回收终点
     this.buleprint.belt.generateBelt({ x, y, z: busZ }, { x: recycMidX, y, z: busZ }, ["x", "z", "y"], "x");
     this.buleprint.belt.generateBelt({ x: recycMidX, y, z: busZ }, { x, y: recycMidY, z }, ["z", "y", "x"], "y");
     // // 物流塔出口
@@ -1187,7 +1185,7 @@ class StationUnit {
     const z = 4; // 第4层分拣
     // 主线回收
     const recycMidY = y + 3;
-    const recycMidX = x + 2;
+    const recycMidX = x + Math.max(this.items[itemIndex].inserter.length, 2); // 回收终点
     this.buleprint.belt.generateBelt({ x, y, z: busZ }, { x: recycMidX, y, z: busZ }, ["x", "z", "y"], "x");
     this.buleprint.belt.generateBelt({ x: recycMidX, y, z: busZ }, { x, y: recycMidY, z }, ["z", "y", "x"], "y");
     // 物流塔出口
