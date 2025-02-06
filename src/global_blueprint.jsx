@@ -765,7 +765,7 @@ class BuildingUnit {
       );
     }
     // 生成分拣器
-    this.factories.forEach((factory) => this.generateFactoryInserter(factory, 2, -4));
+    this.factories.forEach((factory) => this.generateFactoryInserter(factory, 0, -4));
   }
 
   // 生成化工厂
@@ -798,7 +798,12 @@ class BuildingUnit {
     }
 
     // 生成分拣器
-    this.factories.forEach((factory) => this.generateFactoryInserter(factory, 3));
+    this.factories.forEach((factory) => {
+      const pointer = Object.assign({}, factory.localOffset[0]);
+      pointer.x += 1;
+      const [inI] = this.generateFactoryInserter(factory, 3, 2, pointer);
+      inI.forEach((i) => (i.localOffset[1].y += 0.284));
+    });
   }
 
   // 熔炉、制造台
@@ -832,16 +837,15 @@ class BuildingUnit {
    * @param {*} factory
    * @param {*} inSlotOffset 槽位偏移，正数为顺时针，负数为逆时针
    */
-  generateFactoryInserter(factory, inSlotOffset = 6, outSlotOffset = 1) {
-    const pointer = factory.localOffset[0];
+  generateFactoryInserter(factory, inSlotOffset = 6, outSlotOffset = 1, pointer = factory.localOffset[0]) {
     const border = factory.attributes.inserterBorder;
-    const inserters = [];
+    const inserters = [[], []];
     // 原料分拣器
     this.recipe.Items.reduce((acc, itemId) => {
       acc.add(this.buleprint.belt.getBeltIndex(itemId));
       return acc;
     }, new Set()).forEach((beltIndex) => {
-      inserters.push(
+      inserters[0].push(
         this.buleprint.createInserter(3, this.buleprint.belt.getBelt({ x: pointer.x + 1 - beltIndex, y: pointer.y - border.bottom - beltIndex - 1, z: 0 }), {
           x: pointer.x + 1 - beltIndex,
           y: pointer.y - border.bottom,
@@ -854,7 +858,7 @@ class BuildingUnit {
 
     // 对产物排序，副产排最后
     this.recipe.Results.sort((id) => (id === this.buleprint.surplusId ? 1 : -1)).forEach((itemId, index) => {
-      inserters.push(
+      inserters[1].push(
         this.buleprint.createInserter(
           3,
           { x: pointer.x + index, y: pointer.y + border.top, z: 0, inputObjIdx: factory, inputFromSlot: Math.abs(outSlotOffset + index) },
