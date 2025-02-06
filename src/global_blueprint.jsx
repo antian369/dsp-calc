@@ -256,7 +256,6 @@ class MixedConveyerBeltBuleprint {
   surplusId; //
   surplusCount = 0; // 副产物溢出数量，负数表示不足，正数表示溢出，0表示刚好够用
   surplusJoinProduct = false; // 副产物是否参与生产
-  extraBeltItem; // 额外传送带物品
   stationPiler; // 物流塔装载：1-有装载，2-无装载
   // 计算供电站位置
   rowCount = 1; // 行数
@@ -302,7 +301,7 @@ class MixedConveyerBeltBuleprint {
     this.beltLevel = beltType;
     this.inserterMixLevel = recycleMode === 1 ? 3 : insertType;
     if (recycleMode === 2) throw new Error("敬请期待...");
-    // this.inserterMixLevel = insertType;
+    this.inserterMixLevel = insertType; // debug 使用
     this.recycleMode = recycleMode;
     this.stackCount = stackSize;
     this.floor = floor;
@@ -338,14 +337,13 @@ class MixedConveyerBeltBuleprint {
     if (this.surplus) {
       // 有副产，加带子
       this.surplusId = ITEM_NAME_MAP.get(this.surplus).ID;
-      this.extraBeltItem = this.surplus;
       const surplusID = ITEM_NAME_MAP.get(this.surplus).ID;
       const surplusUnits = produceUnits.filter((unit) => RECIPE_ID_MAP.get(unit.recipeId).Items.includes(surplusID));
       this.surplusJoinProduct = surplusUnits.length > 0;
     }
 
     // 副产是否参与生产
-    console.log(`副产: ${this.surplus}, 副产数量:${this.surplusCount}, 副产参与生产:${this.surplusJoinProduct}, 外加带子:${this.extraBeltItem}`);
+    console.log(`副产: ${this.surplus}, 副产数量:${this.surplusCount}, 副产参与生产:${this.surplusJoinProduct}`);
 
     // 物流塔物品种类数：喷涂 + 产出 + 副产 + 原矿 ...
     const stationItems = [
@@ -577,7 +575,6 @@ class BuildingUnit {
   // 副产品：物品、数量
   // 计算副产品输出位置，蓝图有副产，输出到物流塔，否则输出到传送带
   direction = 1; // 方向：1-逆时针，-1-顺时针
-  // 单元内传送带和建筑的方向相反时，为镜像反向
   recipe; // 配方： Recipe
   produce; // 生产要素:ProduceUnit
   constructor(buleprint, recipe, produce) {
@@ -765,7 +762,7 @@ class BuildingUnit {
       );
     }
     // 生成分拣器
-    this.factories.forEach((factory) => this.generateFactoryInserter(factory, 0, -4));
+    this.factories.forEach((factory) => this.generateFactoryInserter(factory, -2, -4));
   }
 
   // 生成化工厂
@@ -799,9 +796,7 @@ class BuildingUnit {
 
     // 生成分拣器
     this.factories.forEach((factory) => {
-      const pointer = Object.assign({}, factory.localOffset[0]);
-      pointer.x += 1;
-      const [inI] = this.generateFactoryInserter(factory, 3, 2, pointer);
+      const [inI] = this.generateFactoryInserter(factory, 4, 1);
       inI.forEach((i) => (i.localOffset[1].y += 0.284));
     });
   }
@@ -907,7 +902,7 @@ class BuildingUnit {
         if (inserter.length < 3) {
           this.buleprint.belt.generateBelt(
             { x: productBeginX + index + 1, y: realY - inserter.length, z: 0 },
-            { x: productBeginX + index + 1, y: realY - 3, z: 0, outputToSlot: index === 0 ? undefined : 2 },
+            { x: productBeginX + index + 1, y: realY - 3, z: 0, outputToSlot: index === this.inserters.length - 1 ? undefined : 2 },
             ["y", "z", "x"]
           );
         }
@@ -1161,7 +1156,10 @@ class StationUnit {
       }
     });
     // 主产物进塔
-    this.buleprint.belt.generateBelt({ x: beginX, y: 5, z: 0 }, { x: beginX + this.getLeftWidth(), y: 5, z: 0, stationSlot: 4 }, ["x", "z", "y"], "y");
+    if (this.stationIndex === 0) {
+      this.buleprint.belt.generateBelt({ x: beginX, y: 5, z: 0 }, { x: beginX + this.getLeftWidth(), y: 5, z: 0, stationSlot: 4 }, ["x", "z", "y"], "y");
+    }
+    // 副产处理
     if (this.stationIndex === 0 && this.buleprint.surplusCount > 0) {
       // 副产不参与生产 或 溢出，从左上入塔
       const y = this.buleprint.height - 4 + beginY;
@@ -1207,7 +1205,7 @@ class StationUnit {
     const y = beginY + 2; // 主线回收的起点
     const z = 6; // 第6层分拣
     // 主线回收
-    const recycMidX = Math.max(x - 3, x - this.items[itemIndex].inserter.length - 2); // 回收中点
+    const recycMidX = Math.min(x - 3, x - this.items[itemIndex].inserter.length - 1); // 回收中点
     const recycEndX = recycMidX + this.items[itemIndex].inserter.length; // 回收终点
     const recycMidZ = 5; // 第5层输入原料
     const recycMidY = y + 2; // 回收中点，也是原料连接点
