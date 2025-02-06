@@ -111,7 +111,7 @@ function pushMatrix(matrix, buildings) {
   });
 }
 
-export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, sorterType, recycleType, rows, stackSize, floor, stationPiler }) {
+export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, insertType, recycleMode, rows, stackSize, floor, stationPiler }) {
   try {
     const produceUnits = mergeProduceUnits(allProduceUnits, surplusList, produces);
     const { order, rawMaterial } = orderRecipe(produceUnits);
@@ -126,8 +126,8 @@ export function computeBlueprint({ allProduceUnits, surplusList, produces, beltT
       rawMaterial,
       rows,
       beltType,
-      sorterType,
-      recycleType,
+      insertType,
+      recycleMode,
       stackSize,
       floor,
       stationPiler
@@ -285,8 +285,8 @@ class MixedConveyerBeltBuleprint {
     rawMaterial, // Record<string, number> 原矿列表
     rowCount = 1, // 行数
     beltType = 2, // 传送带级别：0-黄带，1-绿带，2-蓝带
-    sorterType = 2, // 输入混带的最高级别：0-分拣器，1-高速分拣器，2-极速分拣器
-    recycleType = 1, // 回收方式: 1-"集装分拣器"，2-"四向分流器"
+    insertType = 2, // 输入混带的最高级别：0-分拣器，1-高速分拣器，2-极速分拣器
+    recycleMode = 1, // 回收方式: 1-"集装分拣器"，2-"四向分流器"
     stackSize = 4, // 堆叠数量: 1 | 2 | 4
     floor = 15, // 层高
     stationPiler = 1 // 物流塔装载：1-有装载，2-无装载
@@ -298,9 +298,10 @@ class MixedConveyerBeltBuleprint {
     this.rawMaterial = rawMaterial;
     this.rowCount = rowCount;
     this.beltLevel = beltType;
-    this.inserterMixLevel = recycleType === 1 ? 3 : sorterType;
-    // this.inserterMixLevel = sorterType;
-    this.recycleMode = recycleType;
+    this.inserterMixLevel = recycleMode === 1 ? 3 : insertType;
+    if (recycleMode === 2) throw new Error("敬请期待...");
+    // this.inserterMixLevel = insertType;
+    this.recycleMode = recycleMode;
     this.stackCount = stackSize;
     this.floor = floor;
     this.stationPiler = stationPiler;
@@ -1075,8 +1076,8 @@ class StationUnit {
     }
     // 生成回路
     if (this.stationIndex === 0) {
-      if (this.buleprint.surplus && this.buleprint.surplusJoinProduct) {
-        // 副产参与生产
+      if (this.buleprint.surplus && this.buleprint.surplusJoinProduct || !this.buleprint.surplus) {
+        // 副产参与生产，或无副产
         this.items[2] && this.generateOutput3(beginX, beginY);
       }
       this.items[3] && this.generateOutput4(beginX, beginY);

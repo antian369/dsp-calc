@@ -371,8 +371,8 @@ export function Result({needs_list, set_needs_list}) {
     const handleCalculate = (allProduceUnits, surplusList, produces) => {
         // 获取各项配置
         const beltType = scheme_data.scheme_for_recipe["传送带"] || 0;
-        const sorterType = scheme_data.scheme_for_recipe["分拣器"] || 0;
-        const recycleType = scheme_data.scheme_for_recipe["回收"] || 1;
+        const insertType = scheme_data.scheme_for_recipe["分拣器"] || 0;
+        const recycleMode = scheme_data.scheme_for_recipe["回收"] || 1;
         const rows = scheme_data.scheme_for_recipe["行数"] || 1;
         const stackSize = scheme_data.scheme_for_recipe["堆叠"] || 1;
         const floor = scheme_data.scheme_for_recipe["层高"] || 15;
@@ -386,8 +386,8 @@ export function Result({needs_list, set_needs_list}) {
         // 输出到控制台
         console.log("蓝图配置：", {
             "传送带": beltNames[beltType],
-            "分拣器": sorterNames[sorterType],
-            "回收": recycleType === 0 ? "无" : recycleNames[recycleType],
+            "分拣器": sorterNames[insertType],
+            "回收": recycleMode === 0 ? "无" : recycleNames[recycleMode],
             "行数": rows,
             "堆叠": stackSize
         });
@@ -398,8 +398,8 @@ export function Result({needs_list, set_needs_list}) {
             surplusList, 
             produces, 
             beltType, 
-            sorterType, 
-            recycleType, 
+            insertType, 
+            recycleMode, 
             rows, 
             stackSize,
             floor,
