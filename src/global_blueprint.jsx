@@ -518,8 +518,7 @@ class MixedConveyerBeltBuleprint {
     this.matrix = []; // 蓝图坐标矩阵
     this.buildingsRow.forEach((buildings) => {
       // 初始化一行 12 x maxRow 的二维数组
-      const length = this.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2;
-      this.matrix.push(...Array.from({ length }, () => Array(maxWidth).fill(null)));
+      this.matrix.push(...Array.from({ length: this.height }, () => Array(maxWidth).fill(null)));
       let beginX = 0;
       // 生成建筑、下游传送带、副产传送带
       buildings.forEach((building) => {
@@ -576,10 +575,8 @@ class BuildingUnit {
   // 计算输出物品位置
   // 副产品：物品、数量
   // 计算副产品输出位置，蓝图有副产，输出到物流塔，否则输出到传送带
-  // 增产 | 加速
   direction = 1; // 方向：1-逆时针，-1-顺时针
   // 单元内传送带和建筑的方向相反时，为镜像反向
-  recycleMode = 1; // 回收方式: 1-"集装分拣器"，2-"四向分流器" //
   recipe; // 配方： Recipe
   produce; // 生产要素:ProduceUnit
   constructor(buleprint, recipe, produce) {
@@ -677,7 +674,7 @@ class BuildingUnit {
     this.generateOutputBelt(beginX, beginY, y, ["z", "x", "y"], "x"); // 生成回路
     //副产回收
     if (this.getSurplus()) {
-      const endY = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY; // 总线点结束
+      const endY = this.buleprint.height - 1 + beginY; // 总线点结束
       this.factories.forEach((factory, index) => {
         this.buleprint.belt.generateBelt(
           { x: beginX + index * (factory.attributes.area[0] * 2 + 1) + 1, y: beginY + 4, z: 0 },
@@ -711,7 +708,7 @@ class BuildingUnit {
     this.generateOutputBelt(beginX, beginY, y); // 生成回路
     //副产回收
     if (this.getSurplus()) {
-      const endY = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY; // 总线点结束
+      const endY = this.buleprint.height - 1 + beginY; // 总线点结束
       this.buleprint.belt.generateBelt(
         { x: beginX + 3, y: y + 1, z: 0 },
         { x: beginX + this.width - 2, y: endY, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
@@ -742,7 +739,7 @@ class BuildingUnit {
     this.generateOutputBelt(beginX, beginY, y, ["y", "z", "x"], "x"); // 生成回路
     //副产回收
     if (this.getSurplus()) {
-      const endY = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 1 + beginY; // 总线点结束
+      const endY = this.buleprint.height - 1 + beginY; // 总线点结束
       this.buleprint.belt.generateBelt(
         { x: beginX + 3, y: y + 1, z: 0 },
         { x: beginX + this.width - 2, y: endY, z: this.buleprint.belt.belts.length + 1, outputToSlot: 2 },
