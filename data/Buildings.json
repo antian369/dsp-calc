@@ -311,7 +311,8 @@
       "filterId": 0,
       "itemName": "制造台 Mk.I",
       "attributes": {
-        "area": [2, 2]
+        "area": [2, 2],
+        "inserterBorder": { "top": 1, "bottom": 1 }
       }
     },
     "制造台 Mk.II": {
@@ -351,7 +352,8 @@
       "filterId": 0,
       "itemName": "制造台 Mk.II",
       "attributes": {
-        "area": [2, 2]
+        "area": [2, 2],
+        "inserterBorder": { "top": 1, "bottom": 1 }
       }
     },
     "制造台 Mk.III": {
@@ -391,7 +393,8 @@
       "filterId": 0,
       "itemName": "制造台 Mk.III",
       "attributes": {
-        "area": [2, 2]
+        "area": [2, 2],
+        "inserterBorder": { "top": 1, "bottom": 1 }
       }
     },
     "重组式制造台": {
@@ -414,7 +417,7 @@
           "z": 0
         }
       ],
-      "yaw": [90, 90],
+      "yaw": [0, 0],
       "tilt": 0,
       "pitch": 0,
       "tilt2": 0,
@@ -431,7 +434,8 @@
       "filterId": 0,
       "itemName": "重组式制造台",
       "attributes": {
-        "area": [2, 2]
+        "area": [2, 2],
+        "inserterBorder": { "top": 1, "bottom": 1 }
       }
     },
     "四向分流器": {
@@ -511,7 +515,8 @@
       "filterId": 0,
       "itemName": "电弧熔炉",
       "attributes": {
-        "area": [1.5, 1.5]
+        "area": [1.5, 1.5],
+        "inserterBorder": { "top": 1, "bottom": 1 }
       }
     },
     "位面熔炉": {
@@ -551,7 +556,8 @@
       "filterId": 0,
       "itemName": "位面熔炉",
       "attributes": {
-        "area": [1.5, 1.5]
+        "area": [1.5, 1.5],
+        "inserterBorder": { "top": 1, "bottom": 1 }
       }
     },
     "负熵熔炉": {
@@ -591,7 +597,8 @@
       "filterId": 0,
       "itemName": "负熵熔炉",
       "attributes": {
-        "area": [1.5, 1.5]
+        "area": [1.5, 1.5],
+        "inserterBorder": { "top": 1, "bottom": 1 }
       }
     },
     "化工厂": {
@@ -631,7 +638,8 @@
       "filterId": 0,
       "itemName": "化工厂",
       "attributes": {
-        "area": [4, 2]
+        "area": [4, 2],
+        "inserterBorder": { "top": 2, "bottom": 1 }
       }
     },
     "量子化工厂": {
@@ -671,7 +679,8 @@
       "filterId": 0,
       "itemName": "量子化工厂",
       "attributes": {
-        "area": [4, 2]
+        "area": [4, 2],
+        "inserterBorder": { "top": 2, "bottom": 1 }
       }
     },
     "原油精炼厂": {
@@ -711,7 +720,8 @@
       "filterId": 0,
       "itemName": "原油精炼厂",
       "attributes": {
-        "area": [3.5, 1.5]
+        "area": [3.5, 1.5],
+        "inserterBorder": { "top": 1, "bottom": 1 }
       }
     },
     "微型粒子对撞机": {
@@ -751,7 +761,8 @@
       "filterId": 0,
       "itemName": "微型粒子对撞机",
       "attributes": {
-        "area": [5, 2.5]
+        "area": [5, 2.5],
+        "inserterBorder": { "top": 2, "bottom": 2 }
       }
     },
     "喷涂机": {
@@ -830,7 +841,8 @@
       "filterId": 0,
       "itemName": "矩阵研究站",
       "attributes": {
-        "area": [3, 3, 3]
+        "area": [3, 3, 3],
+        "inserterBorder": { "top": 2, "bottom": 2 }
       }
     },
     "自演化研究站": {
@@ -871,7 +883,8 @@
       "filterId": 0,
       "itemName": "自演化研究站",
       "attributes": {
-        "area": [3, 3, 3]
+        "area": [3, 3, 3],
+        "inserterBorder": { "top": 2, "bottom": 2 }
       }
     },
     "行星内物流运输站": {
