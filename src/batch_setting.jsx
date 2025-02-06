@@ -79,8 +79,19 @@ export function BatchSetting() {
             for (var i = 0; i < game_data.recipe_data.length; i++) {
                 scheme_data.scheme_for_recipe[i]["增产点数"] = pro_num;
             }
+            ////////////////// add by lianzt begin
+            scheme_data.scheme_for_recipe["增产点数"] = pro_num;
+            ////////////////// add by lianzt end
             return scheme_data;
         });
+        ////////////////// add by lianzt begin
+        if (pro_num == 0) {
+            change_pro_mode(0); // 无增产
+        } else {
+            change_pro_mode(1); // 有增产时先切换到加速
+            change_pro_mode(2); // 再切换到增产，某些配方无增产时依然可以保留加速效果
+        }
+        ////////////////// add by lianzt end
     }
 
     function change_pro_mode(pro_mode) {
@@ -107,8 +118,8 @@ export function BatchSetting() {
         <small className="fw-bold">批量预设</small>
         <HorizontalMultiButtonSelect choice={pro_num} options={proliferate_options}
                                      onChange={change_pro_num} no_gap={true} className={"raw-text-selection"}/>
-        <HorizontalMultiButtonSelect choice={pro_mode} options={promode_options}
-                                     onChange={change_pro_mode} no_gap={true} className={"raw-text-selection"}/>
+        {/* <HorizontalMultiButtonSelect choice={pro_mode} options={promode_options}
+                                     onChange={change_pro_mode} no_gap={true} className={"raw-text-selection"}/> */}
         {factory_doms}
     </div>;
 }

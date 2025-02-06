@@ -111,7 +111,7 @@ function pushMatrix(matrix, buildings) {
   });
 }
 
-export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, insertType, recycleMode, rows, stackSize, floor, stationPiler }) {
+export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, insertType, recycleMode, rows, stackSize, floor, stationPiler, proNum }) {
   try {
     const produceUnits = mergeProduceUnits(allProduceUnits, surplusList, produces);
     const { order, rawMaterial } = orderRecipe(produceUnits);
@@ -130,7 +130,8 @@ export function computeBlueprint({ allProduceUnits, surplusList, produces, beltT
       recycleMode,
       stackSize,
       floor,
-      stationPiler
+      stationPiler,
+      proNum
     );
     buleprint.compute();
     return buleprint;
@@ -289,7 +290,8 @@ class MixedConveyerBeltBuleprint {
     recycleMode = 1, // 回收方式: 1-"集装分拣器"，2-"四向分流器"
     stackSize = 4, // 堆叠数量: 1 | 2 | 4
     floor = 15, // 层高
-    stationPiler = 1 // 物流塔装载：1-有装载，2-无装载
+    stationPiler = 1, // 物流塔装载：1-有装载，2-无装载
+    proNum = 0 // 增产点数
   ) {
     this.produce = produce;
     this.produceId = ITEM_NAME_MAP.get(produce).ID;
@@ -305,10 +307,7 @@ class MixedConveyerBeltBuleprint {
     this.stackCount = stackSize;
     this.floor = floor;
     this.stationPiler = stationPiler;
-    this.proliferatorLevel = Math.min(
-      produceUnits.reduce((a, b) => Math.max(a, b.proNum), 0),
-      3
-    ); // 选择的喷涂级别没有3，4为MK.III，修改为3
+    this.proliferatorLevel = proNum === 4 ? 3 : proNum; // 选择的喷涂级别没有3，4为MK.III，修改为3
     this.belt = new BeltUnit(this);
     this.shareSize = this.stackCount * 15; // 一份的容量
 
@@ -795,15 +794,22 @@ class BuildingUnit {
       this.buleprint.belt.generateBelt({ x: beginX + 1, y: realY, z: 0 }, { x: beginX + this.width - 1, y: realY, z: 0 }); // 最终产物进塔的第4个槽
     } else {
       let productBeginX = beginX + this.width - this.inserters.length;
-      const y = (this.buleprint.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2) - 2 + beginY; // 总线下方一格开始
+      const y = this.buleprint.height - 2 + beginY; // 总线下方一格开始
       const z = this.buleprint.belt.getBeltIndex(this.getProduce().Name) + 1; // 从总线回收的带子，产物所在带子的z轴
-      this.buleprint.belt.generateBelt({ x: beginX + 1, y, z }, { x: beginX + this.width - 1, y: realY, z: 0 }, priority, zDirection);
+      const [beginRecycleBelt] = this.buleprint.belt.generateBelt(
+        { x: beginX + 1, y, z },
+        { x: beginX + this.width - 1, y: realY, z: 0 },
+        priority,
+        zDirection
+      );
       this.buleprint.belt.generateBelt(
         { x: productBeginX, y: realY - 3, z: 0 }, // x:建筑右侧开始, y:建筑输出位置为第4格, z: 0
         { x: beginX + this.width, y: y + 1, z, outputToSlot: 2 }, // 连接到总线
         ["x", "z", "y"], // 先横向
         "y" // 延y轴方向上升
       );
+      // 生成回收分拣器
+      this.buleprint.createInserter(3, this.buleprint.belt.getBelt({ x: beginX + 1, y: y + 1, z }), beginRecycleBelt, this.produce.item);
       // 生成分拣器对接的带子
       this.inserters.forEach((inserter, index) => {
         if (inserter.length < 3) {
@@ -813,6 +819,11 @@ class BuildingUnit {
             ["y", "z", "x"]
           );
         }
+        this.buleprint.createInserter(
+          inserter.level,
+          this.buleprint.belt.getBelt({ x: productBeginX + index, y: realY, z: 0 }),
+          this.buleprint.belt.getBelt({ x: productBeginX + index, y: realY - inserter.length, z: 0 })
+        );
       });
     }
   }
@@ -1076,7 +1087,7 @@ class StationUnit {
     }
     // 生成回路
     if (this.stationIndex === 0) {
-      if (this.buleprint.surplus && this.buleprint.surplusJoinProduct || !this.buleprint.surplus) {
+      if ((this.buleprint.surplus && this.buleprint.surplusJoinProduct) || !this.buleprint.surplus) {
         // 副产参与生产，或无副产
         this.items[2] && this.generateOutput3(beginX, beginY);
       }

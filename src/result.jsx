@@ -377,6 +377,7 @@ export function Result({needs_list, set_needs_list}) {
         const stackSize = scheme_data.scheme_for_recipe["堆叠"] || 1;
         const floor = scheme_data.scheme_for_recipe["层高"] || 15;
         const stationPiler = scheme_data.scheme_for_recipe["物流站"] || 1;
+        const proNum = scheme_data.scheme_for_recipe["增产点数"] || 0;
 
         // 获取对应的名称
         const beltNames = ["传送带", "高速传送带", "极速传送带"];
@@ -389,7 +390,8 @@ export function Result({needs_list, set_needs_list}) {
             "分拣器": sorterNames[insertType],
             "回收": recycleMode === 0 ? "无" : recycleNames[recycleMode],
             "行数": rows,
-            "堆叠": stackSize
+            "堆叠": stackSize,
+            "增产点数": proNum
         });
         
         // 计算传送带利用率
@@ -403,7 +405,8 @@ export function Result({needs_list, set_needs_list}) {
             rows, 
             stackSize,
             floor,
-            stationPiler // 传入物流站参数
+            stationPiler, // 传入物流站参数
+            proNum // 传入增产点数参数
         });
         setBeltUtilization(`${buleprint.belt.beltUsageRate}% x ${buleprint.belt.belts.length}`);
         return buleprint;
@@ -469,8 +472,8 @@ export function Result({needs_list, set_needs_list}) {
                 <th width={130}>产能</th>
                 <th width={110}>工厂</th>
                 <th width={300}>配方选取</th>
-                {/* <th width={180}>增产模式</th>
-                <th width={160}>增产剂</th> */}
+                {/* <th width={180}>增产模式</th> */}
+                {/* <th width={160}>增产剂</th> */}
                 <th width={170}>工厂类型</th>
             </tr>
             </thead>
