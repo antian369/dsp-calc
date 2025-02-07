@@ -389,14 +389,15 @@ class MixedConveyerBeltBuleprint {
     let i = 0,
       rowWidth = 0;
     this.buildingsRow[0].unshift(...this.stations);
-    rowWidth = this.stations.reduce((a, b) => a + b.width, 0);
+    this.buildingsRow[0].unshift(this.buildings[0]); // 最终产物必须在第一行
+    rowWidth = this.stations.reduce((a, b) => a + b.width, 0) + this.buildings[0].width;
     if (rowWidth > aggWidth) {
       console.log(`第${i}行，宽度：${rowWidth}, aggWidth:${aggWidth}, 建筑：`, this.buildingsRow[i]);
       aggWidth = (aggWidth + rowWidth) / 2;
       i++;
       rowWidth = 0;
     }
-    this.buildings.forEach((building) => {
+    this.buildings.slice(1).forEach((building) => {
       building.setDirection(i); //
       this.buildingsRow[i].unshift(building);
       rowWidth += building.width;
@@ -408,6 +409,9 @@ class MixedConveyerBeltBuleprint {
       }
     });
     console.log(`第${i}行，宽度：${rowWidth}, aggWidth:${aggWidth}, 建筑：`, this.buildingsRow[i]);
+    // 最后一行有可能是空行，在这里截断
+    this.rowCount = i + 1;
+    this.buildingsRow = this.buildingsRow.slice(0, i + 1);
   }
 
   /**
@@ -1592,7 +1596,7 @@ class BeltUnit {
     }
     if (end.outputToSlot != null) {
       // 结束点是传送带
-      belts[belts.length - 2].outputToSlot = 2;
+      belts[belts.length - 2].outputToSlot = typeof end.outputToSlot === "number" ? end.outputToSlot : 2;
     } else if (end.stationSlot != null) {
       // 结束点是物流塔
       const station = this.buleprint.matrix[end.y][end.x].find((item) => item.itemName === STATION) || end.station;

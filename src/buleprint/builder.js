@@ -1,5 +1,5 @@
 import { toStr } from "./parser";
-import { INSERTER_TYPE, SMELTER, CHEMICAL, LAB, OIL_REFINERY, HADRON_COLLIDER, ASSEMBLER } from "./constant";
+import { INSERTER_TYPE, SMELTER, CHEMICAL, LAB, OIL_REFINERY, HADRON_COLLIDER, ASSEMBLER, BELT_LEVEL } from "./constant";
 
 /**
  * 构建蓝图
@@ -130,6 +130,169 @@ export class BlueprintBuilder {
     }
   }
 
+  // 连接每行传送带
+  connectRows() {
+    const matrix = this.buleprint.matrix;
+    const firstRow = 0;
+    const rowHeight = this.buleprint.height;
+    const lastRow = matrix.length / rowHeight - 1;
+    const rowLength = matrix[0].length + 1; //右侧多走一格
+    const beltCount = this.buleprint.belt.belts.length;
+    for (let i = 0; i < matrix.length; i += rowHeight) {
+      const row = Math.round(i / rowHeight);
+      const bottomLeft = matrix[i + 2].find(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0]; // 第一个带子
+      const bottomRight = (matrix[i + 1].findLast(Boolean) || matrix[i + 2].findLast(Boolean)).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0]; // 最后一个带子
+      const topLeft = matrix[i + rowHeight - 1].find(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0]; // 第一个带子
+      const topRight = matrix[i + rowHeight - 1].findLast(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0]; // 最后一个带子
+      let nextBottomLeft;
+      let nextBottomRight;
+      let nextTopLeft;
+      let nextTopRight;
+      if (row !== lastRow) {
+        nextBottomLeft = matrix[i + rowHeight + 2].find(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0]; // 第一个带子
+        nextBottomRight = (matrix[i + rowHeight + 1].findLast(Boolean) || matrix[i + rowHeight + 2].findLast(Boolean)).find((f) =>
+          BELT_LEVEL.includes(f.itemName)
+        ).localOffset[0]; // 最后一个带子
+        nextTopLeft = matrix[i + rowHeight * 2 - 1].find(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0]; // 第一个带子
+        nextTopRight = matrix[i + rowHeight * 2 - 1].findLast(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0]; // 最后一个带子
+      }
+
+      if (row === firstRow) {
+        // 第一行将右侧连接
+        for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
+          this.buleprint.belt.generateBelt({ x: topRight.x, y: topRight.y, z: beltIndex + 1 }, { x: bottomRight.x, y: bottomRight.y, z: beltIndex + 1 });
+        }
+      }
+      if (row % 2 === 0) {
+        //单数行连接左侧
+        // 左侧带子抬升
+        for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
+          this.buleprint.belt.generateBelt(
+            { x: bottomLeft.x, y: i + 2 - beltIndex, z: 0 },
+            { x: 0, y: i + 2 - beltIndex, z: beltIndex + 1 },
+            ["z", "x", "y"],
+            "x"
+          );
+        }
+        // 上游连接下一行
+        if (row === firstRow && row === lastRow) {
+          // 只有一行
+          for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
+            this.buleprint.belt.generateBelt({ x: 0, y: i + 2 - beltIndex, z: beltIndex + 1 }, { x: 0, y: rowHeight - 1, z: beltIndex + 1 });
+          }
+        } else if (row !== lastRow) {
+          //左侧下方带子连接
+          for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
+            this.buleprint.belt.generateBelt(
+              { x: 0, y: i + 2 - beltIndex, z: beltIndex + 1 },
+              { x: nextBottomLeft.x, y: i + 2 - beltIndex + rowHeight, z: 0 },
+              ["y", "z", "x"],
+              "x"
+            );
+          }
+          // 左侧上方带子连接
+          if (nextTopLeft.x !== 2) {
+            // 下一行的上部填充
+            for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
+              this.buleprint.belt.generateBelt(
+                { x: nextTopLeft.x, y: i + rowHeight * 2 - 1, z: beltIndex + 1 },
+                { x: 2, y: i + rowHeight * 2 - 1, z: beltIndex + 1 }
+              );
+            }
+            // 副产
+            this.buleprint.surplus &&
+              this.buleprint.belt.generateBelt(
+                { x: nextTopLeft.x, y: i + rowHeight * 2 - 1, z: beltCount + 1 },
+                { x: 2, y: i + rowHeight * 2 - 1, z: beltCount + 1 }
+              );
+          }
+          for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
+            this.buleprint.belt.generateBelt({ x: 2, y: i + rowHeight * 2 - 1, z: beltIndex + 1 }, { x: 2, y: i + rowHeight - 1, z: beltIndex + 1 });
+          }
+          // 副产
+          this.buleprint.surplus &&
+            this.buleprint.belt.generateBelt({ x: 2, y: i + rowHeight * 2 - 1, z: beltCount + 1 }, { x: 2, y: i + rowHeight - 1, z: beltCount + 1 });
+        }
+
+        if (row === lastRow) {
+          // 最后一行是单数时，左侧连接
+          for (let beltIndex = 0; beltIndex < this.buleprint.belt.belts.length; beltIndex++) {
+            this.buleprint.belt.generateBelt(
+              { x: 0, y: i + 2 - beltIndex, z: beltIndex + 1 },
+              { x: topLeft.x, y: i + rowHeight - 1, z: beltIndex + 1 },
+              ["y", "z", "x"],
+              "x"
+            );
+          }
+        }
+      } else {
+        // 双数行连接右侧
+        // 否则连接下一行
+        if (row !== lastRow) {
+          for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
+            //抬升下方带子
+            this.buleprint.belt.generateBelt(
+              { x: bottomRight.x, y: i + 2 - beltIndex, z: 0 },
+              { x: rowLength - 1, y: i + 2 - beltIndex, z: beltIndex + 1 },
+              ["x", "z", "y"],
+              "x",
+              1
+            );
+            // 下方带子连接下一行
+            this.buleprint.belt.generateBelt(
+              { x: rowLength - 1, y: i + 2 - beltIndex, z: beltIndex + 1 },
+              { x: nextBottomRight.x, y: i + 2 + rowHeight - beltIndex, z: 0 },
+              ["y", "z", "x"],
+              "x"
+            );
+
+            this.buleprint.belt.generateBelt(
+              { x: nextTopRight.x, y: i + rowHeight * 2 - 1, z: beltIndex + 1 },
+              { x: rowLength - 3, y: i + rowHeight - 1, z: beltIndex + 1 },
+              ["x", "z", "y"]
+            );
+            // 副产
+            this.buleprint.surplus &&
+              this.buleprint.belt.generateBelt(
+                { x: nextTopRight.x, y: i + rowHeight * 2 - 1, z: beltCount + 1 },
+                { x: rowLength - 3, y: i + rowHeight - 1, z: beltCount + 1 },
+                ["x", "z", "y"]
+              );
+            // 填充
+            if (topRight.x !== rowLength - 3) {
+              this.buleprint.belt.generateBelt(
+                { x: rowLength - 3, y: i + rowHeight - 1, z: beltIndex + 1 },
+                { x: topRight.x, y: i + rowHeight - 1, z: beltIndex + 1 }
+              );
+              // 副产
+              this.buleprint.belt.generateBelt(
+                { x: rowLength - 3, y: i + rowHeight - 1, z: beltCount + 1 },
+                { x: topRight.x, y: i + rowHeight - 1, z: beltCount + 1 }
+              );
+            }
+          }
+        } else {
+          // 最后一行是双数时，右侧连接，先抬升
+          for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
+            this.buleprint.belt.generateBelt(
+              { x: bottomRight.x, y: i + 2 - beltIndex, z: 0 },
+              { x: rowLength - 1, y: i + 2 - beltIndex, z: beltIndex + 1 },
+              ["x", "z", "y"],
+              "x",
+              1
+            );
+            this.buleprint.belt.generateBelt(
+              { x: rowLength - 1, y: i + 2 - beltIndex, z: beltIndex + 1 },
+              { x: topRight.x, y: topRight.y, z: beltIndex + 1 },
+              ["y", "z", "x"],
+              "x"
+            );
+          }
+        }
+      }
+    }
+  }
+
   generate() {
     // 遍历矩阵，元素为空时表示空地，非空时表示建筑
     // 反转偶数行建筑
@@ -149,6 +312,8 @@ export class BlueprintBuilder {
       buildingMap.set(key, building);
     });
     this.buleprint.buildingsMap = buildingMap;
+
+    this.connectRows();
 
     // 遍历时为建筑分配 index，从 0 开始，只有 index 为空时才分配，并将新分配 index 的建筑对象 加入到 buleprint.buildings 中
     let index = 0;
