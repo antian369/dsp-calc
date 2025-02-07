@@ -503,26 +503,6 @@ export function Result({needs_list, set_needs_list}) {
                     {surplus_doms}
                 </fieldset>}
 
-            {building_rows.length > 0 &&
-                <>
-                    <fieldset className="w-fit">
-                        <legend><small>建筑统计</small></legend>
-                        <table>
-                            <tbody>{building_rows}</tbody>
-                        </table>
-                    </fieldset>
-                    <span className="d-inline-flex gap-1 text-nowrap">
-                        <span className="me-1">预估电力</span>
-                        <span className="fast-tooltip" data-tooltip="不包含采集设备">
-                            {energy_cost.toFixed(fixed_num)}
-                        </span>/
-                        <span className="fast-tooltip" data-tooltip="包含采集设备">
-                            {(energy_cost + miner_energy_cost).toFixed(fixed_num)}
-                        </span>
-                        MW
-                    </span>
-                </>}
-
             {/* add by lian.zt 生成蓝图 */}
             {produceUnits.length > 0 && 
             <>
@@ -630,6 +610,7 @@ export function Result({needs_list, set_needs_list}) {
                                     options={[
                                         {value: 1, label: "1"},
                                         {value: 2, label: "2"},
+                                        {value: 3, label: "3"},
                                         {value: 4, label: "4"}
                                     ]}
                                     onChange={(value) => {
@@ -718,6 +699,26 @@ export function Result({needs_list, set_needs_list}) {
                 </fieldset>
             </>
             }
+
+            {building_rows.length > 0 &&
+                <>
+                    <fieldset className="w-fit">
+                        <legend><small>建筑统计</small></legend>
+                        <table>
+                            <tbody>{building_rows}</tbody>
+                        </table>
+                    </fieldset>
+                    <span className="d-inline-flex gap-1 text-nowrap">
+                        <span className="me-1">预估电力</span>
+                        <span className="fast-tooltip" data-tooltip="不包含采集设备">
+                            {energy_cost.toFixed(fixed_num)}
+                        </span>/
+                        <span className="fast-tooltip" data-tooltip="包含采集设备">
+                            {(energy_cost + miner_energy_cost).toFixed(fixed_num)}
+                        </span>
+                        MW
+                    </span>
+                </>}
         </div>
     </div>;
 }

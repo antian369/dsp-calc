@@ -33,21 +33,12 @@ interface Recipe {
 import { recipes, items } from "../data/Vanilla.json";
 import { buildings, inserterSettings } from "../data/Buildings.json";
 import { BlueprintBuilder, ROW_HEIGHT_1, ROW_HEIGHT_2 } from "./buleprint/builder";
-
-const RAW_FACTORY = ["采矿机", "大型采矿机", "轨道采集器", "行星基地", "抽水站", "射线接收站", "原油萃取站"]; // 产出原矿的工石
+import { INSERTER_TYPE, BELT_LEVEL, SMELTER, CHEMICAL, LAB, STATION, HADRON_COLLIDER, RAW_FACTORY, PRO_LIST, SPRAY_COATER } from "./buleprint/constant";
 
 const ITEM_NAME_MAP = items.reduce((a, b) => a.set(b.Name, b), new Map());
 const ITEM_ID_MAP = items.reduce((a, b) => a.set(b.ID, b), new Map());
 const RECIPE_ID_MAP = recipes.reduce((a, b) => a.set(b.ID, b), new Map());
-const PRO_LIST = ["增产剂 Mk.I", "增产剂 Mk.IIf", "增产剂 Mk.III"];
-const INSERTER_TYPE = ["分拣器", "高速分拣器", "极速分拣器", "集装分拣器"];
-const BELT_LEVEL = ["传送带", "高速传送带", "极速传送带"];
-const SMELTER = ["电弧熔炉", "位面熔炉", "负熵熔炉"];
-const CHEMICAL = ["化工厂", "量子化工厂"];
-const LAB = ["矩阵研究站", "自演化研究站"];
-const STATION = "行星内物流运输站";
-const HADRON_COLLIDER = "微型粒子对撞机";
-const OIL_REFINERY = "原油精炼厂";
+
 const BELT_SHARE_SIZE = [23, 47, 119]; // 传送带容量，理论最大值-1
 
 const BUILDINGS_STRING = new Map();
@@ -486,8 +477,8 @@ class MixedConveyerBeltBuleprint {
     inserter.yaw = [yaw, yaw];
     inserter.inputObjIdx = begin.inputObjIdx;
     inserter.outputObjIdx = end.outputObjIdx;
-    begin.inputFromSlot && (inserter.inputFromSlot = begin.inputFromSlot);
-    end.outputToSlot && (inserter.outputToSlot = end.outputToSlot);
+    begin.inputFromSlot != null && (inserter.inputFromSlot = begin.inputFromSlot);
+    end.outputToSlot != null && (inserter.outputToSlot = end.outputToSlot);
     if (filter) {
       inserter.filterId = typeof filter === "number" ? filter : ITEM_NAME_MAP.get(filter).ID;
     }
@@ -498,18 +489,6 @@ class MixedConveyerBeltBuleprint {
    * 生成地图二维数组
    */
   generate() {
-    // 1. 物流塔、输出传送带
-    // 2. 工厂建筑、输出传送带
-    // 3. 总线传送带
-    // 4. 喷涂机
-    // 5. 电线杆
-    // 5. 工厂输入分拣器
-    // 6. 工厂输出分拣器
-    // 8. 传送带对接总线
-    // 右上角是坐标(0,0)，建筑坐标是建筑右上角的起点
-    // 区域大小为从右上角开始到最左侧建筑的开始点，到最下侧建筑的开始点，区域大小是左下建筑开始点 x+1, y+1
-    // localOffset 是建筑的起点与终点，只对传送带、分拣器有效
-
     // 找到最长的行
     const maxWidth = this.buildingsRow.map((unit) => unit.reduce((a, b) => a + b.width, 0)).reduce((a, b) => Math.max(a, b), 0);
     this.height = this.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2; // 回收模式为集装分拣器时，高度为11，否则为15
@@ -517,8 +496,8 @@ class MixedConveyerBeltBuleprint {
     this.matrix = []; // 蓝图坐标矩阵
     this.buildingsRow.forEach((buildings) => {
       // 初始化一行 12 x maxRow 的二维数组
-      this.matrix.push(...Array.from({ length: this.height }, () => Array(maxWidth).fill(null)));
-      let beginX = 0;
+      this.matrix.push(...Array.from({ length: this.height }, () => Array(maxWidth + 4).fill(null)));
+      let beginX = 2;
       // 生成建筑、下游传送带、副产传送带
       buildings.forEach((building) => {
         building.generateUpstream(beginX, beginY); // 生成上游传送带，需要从右向左生成
@@ -1173,7 +1152,7 @@ class StationUnit {
     // 生成喷涂机
     if (this.buleprint.proliferatorLevel > 0 && this.stationIndex === 0) {
       for (y = 0; y < this.buleprint.belt.belts.length; y++) {
-        this.buleprint.createBuildingInfo("喷涂机", { x: beginX + 2, y: 2 - y, z: 0 });
+        this.buleprint.createBuildingInfo(SPRAY_COATER, { x: beginX + 2, y: 2 - y, z: 0 });
       }
       this.buleprint.belt.generateBelt(
         { x: beginX + this.getLeftWidth(), y: beginY + 4, z: 0, stationSlot: 5, storageIdx: 1 }, // 物流塔槽位1

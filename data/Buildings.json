@@ -261,7 +261,7 @@
       "pitch2": 0,
       "outputObjIdx": -1,
       "inputObjIdx": -1,
-      "outputToSlot": 7,
+      "outputToSlot": -1,
       "inputFromSlot": -1,
       "outputFromSlot": 0,
       "inputToSlot": 1,

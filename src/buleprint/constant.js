@@ -1,0 +1,12 @@
+export const INSERTER_TYPE = ["分拣器", "高速分拣器", "极速分拣器", "集装分拣器"];
+export const BELT_LEVEL = ["传送带", "高速传送带", "极速传送带"];
+export const ASSEMBLER = ["制造台 Mk.I", "制造台 Mk.II", "制造台 Mk.III", "重组式制造台"];
+export const SMELTER = ["电弧熔炉", "位面熔炉", "负熵熔炉"];
+export const CHEMICAL = ["化工厂", "量子化工厂"];
+export const LAB = ["矩阵研究站", "自演化研究站"];
+export const STATION = "行星内物流运输站";
+export const HADRON_COLLIDER = "微型粒子对撞机";
+export const OIL_REFINERY = "原油精炼厂";
+export const RAW_FACTORY = ["采矿机", "大型采矿机", "轨道采集器", "行星基地", "抽水站", "射线接收站", "原油萃取站"]; // 产出原矿的工厂
+export const PRO_LIST = ["增产剂 Mk.I", "增产剂 Mk.IIf", "增产剂 Mk.III"];
+export const SPRAY_COATER = "喷涂机";
