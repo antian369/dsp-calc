@@ -291,6 +291,23 @@ export class BlueprintBuilder {
     }
   }
 
+  connectRows4Dir() {
+    const matrix = this.buleprint.matrix;
+    const rowHeight = this.buleprint.height;
+    const rowLength = matrix[0].length;
+    const left = matrix[1].find(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0].x; // 第一个带子
+    const right = matrix[5].findLast(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0].x; // 最后一个带子
+    const virtualRowX = 2;
+    const nextLeft = matrix[rowHeight + 1].find(Boolean)?.find((f) => BELT_LEVEL.includes(f.itemName))?.localOffset?.[0]?.x || virtualRowX; // 第一个带子
+    const nextRight = matrix[rowHeight + 1].findLast(Boolean)?.find((f) => BELT_LEVEL.includes(f.itemName))?.localOffset?.[0]?.x || virtualRowX; // 最后一个带子
+    // 连接左侧
+    this.buleprint.belt.generateBelt({ x: left, y: 1, z: 0 }, { x: 0, y: rowHeight, z: 0 }, ["x", "y", "z"]);
+    this.buleprint.belt.generateBelt({ x: 0, y: rowHeight, z: 0 }, { x: nextLeft, y: rowHeight + 1, z: 0 }, ["y", "x", "z"]);
+    // 连接右侧
+    this.buleprint.belt.generateBelt({ x: nextRight, y: rowHeight + 1, z: 0 }, { x: rowLength, y: rowHeight, z: 0 }, ["x", "y", "z"]);
+    this.buleprint.belt.generateBelt({ x: rowLength, y: rowHeight, z: 0 }, { x: right, y: 5, z: 0 }, ["y", "x", "z"]);
+  }
+
   generate() {
     // 遍历矩阵，元素为空时表示空地，非空时表示建筑
     // 反转偶数行建筑
@@ -314,7 +331,7 @@ export class BlueprintBuilder {
     if (this.buleprint.recycleMode === 1) {
       this.connectRows();
     } else {
-      //todo...
+      this.connectRows4Dir();
     }
 
     // 遍历时为建筑分配 index，从 0 开始，只有 index 为空时才分配，并将新分配 index 的建筑对象 加入到 buleprint.buildings 中
@@ -330,7 +347,9 @@ export class BlueprintBuilder {
       }
     });
     let unLinked = this.dspBuleprint.buildings.filter((f) => typeof f.inputObjIdx === "object");
+    let unlinkLength;
     while (unLinked.length) {
+      unlinkLength = unLinked.length;
       unLinked = unLinked.filter((f) => {
         if (f.inputObjIdx.index !== -1) {
           f.inputObjIdx = f.inputObjIdx.index;
@@ -338,9 +357,13 @@ export class BlueprintBuilder {
         }
         return true;
       });
+      if (unlinkLength === unLinked.length) {
+        throw new Error("存在连接异常的建筑");
+      }
     }
     unLinked = this.dspBuleprint.buildings.filter((f) => typeof f.outputObjIdx === "object");
     while (unLinked.length) {
+      unlinkLength = unLinked.length;
       unLinked = unLinked.filter((f) => {
         if (f.outputObjIdx.index !== -1) {
           f.outputObjIdx = f.outputObjIdx.index;
@@ -348,6 +371,9 @@ export class BlueprintBuilder {
         }
         return true;
       });
+      if (unlinkLength === unLinked.length) {
+        throw new Error("存在连接异常的建筑");
+      }
     }
   }
 
