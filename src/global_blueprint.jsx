@@ -658,7 +658,9 @@ class BuildingUnit {
     }
     this.width += 1; // 加1格输入到总线
     if (this.buleprint.recycleMode === 2) {
-      this.width += 3; // 再加上四向分流器
+      if (this.getProduce().Name !== this.buleprint.produce) {
+        this.width += 2; // 再加上四向分流器
+      }
     }
 
     console.log(`建筑：${this.produce.factory}, 输出：${this.produce.item}, 副产：${this.buleprint.surplus}, 宽度：${this.width}, 分拣器：`, this.inserters);
@@ -979,10 +981,15 @@ class BuildingUnit {
       }
     } else {
       // 生成总线
-      const pointer = { x: beginX + this.width - 1, y: beginY }; // 四向分流器的位置
-      this.buleprint.belt.generateSplitter4Dir(pointer, [{ type: "out", filter: this.getProduce().ID }, { type: "in" }, null, { type: "out" }]);
-      this.buleprint.belt.generateBelt({ x: pointer.x - 1, y: beginY, z: 0 }, { x: beginX, y: beginY, z: 0 });
-      this.buleprint.belt.generateBelt({ x: beginX + this.width, y: beginY, z: 0 }, { x: pointer.x + 1, y: beginY, z: 0 });
+      if (this.getProduce().Name === this.buleprint.produce) {
+        // 最终产物不需要分流器
+        this.buleprint.belt.generateBelt({ x: beginX + this.width, y: beginY, z: 0 }, { x: beginX, y: beginY, z: 0 });
+      } else {
+        const pointer = { x: beginX + this.width - 1, y: beginY }; // 四向分流器的位置
+        this.buleprint.belt.generateSplitter4Dir(pointer, [{ type: "out", filter: this.getProduce().ID }, { type: "in" }, null, { type: "out" }]);
+        this.buleprint.belt.generateBelt({ x: pointer.x - 1, y: beginY, z: 0 }, { x: beginX, y: beginY, z: 0 });
+        this.buleprint.belt.generateBelt({ x: beginX + this.width, y: beginY, z: 0 }, { x: pointer.x + 1, y: beginY, z: 0 });
+      }
     }
   }
 
@@ -1034,6 +1041,9 @@ class BuildingUnit {
           this.generateDefault(beginX, beginY);
       }
     } else {
+      if (this.getProduce().Name === this.buleprint.produce) {
+        beginX -= 1;
+      }
       switch (this.produce.factory) {
         case "矩阵研究站":
         case "自演化研究站":
@@ -1221,7 +1231,7 @@ class BuildingUnit {
   generateChemicalPlant4Dir(beginX, beginY) {
     const pointer = { x: beginX + this.width - 1, y: beginY }; // 四向分流器的位置
     // 生成建筑
-    let x = beginX + this.inserters.length;
+    let x = beginX + this.inserters.length + 1;
     let y = pointer.y;
     for (let i = 0; i < this.produce.factoryNumber; i++) {
       // 建筑是一个方形，将矩阵中相应位置填入建筑
@@ -1238,7 +1248,7 @@ class BuildingUnit {
     if (this.getProduce().Name !== this.buleprint.produce) {
       this.buleprint.belt.generateBelt({ x: pointer.x, y: pointer.y + 1, z: 0 }, { x: beginX, y: y, z: 0 }, ["y", "x", "z"]);
       this.buleprint.belt.generateBelt(
-        { x: beginX, y: beginY + 1, z: 0 },
+        { x: beginX, y: beginY + 2, z: 0 },
         { x: beginX + this.inserters.length, y: beginY, z: 0, outputToSlot: 2 },
         ["x", "y", "z"],
         "x"
@@ -1249,7 +1259,7 @@ class BuildingUnit {
         if (inserter.length < 3) {
           this.buleprint.belt.generateBelt(
             { x: beginX + index, y: y - inserter.length, z: 0 },
-            { x: beginX + index, y: pointer.y + 1, z: 0, outputToSlot: 2 },
+            { x: beginX + index, y: pointer.y + 2, z: 0, outputToSlot: 2 },
             ["x", "y", "z"],
             "x"
           );
@@ -2008,7 +2018,7 @@ class BeltUnit {
    *
    * @param {*} solts 上、右、下、左：{ type: in|out, priority, filter}
    */
-  generateSplitter4Dir(pointer, solts = [], storage = true) {
+  generateSplitter4Dir(pointer, solts = [], storage = false) {
     checkPointer(pointer);
     const splitter = this.buleprint.createBuildingInfo(SPLITTER_4DIR, pointer);
     if (storage) {
