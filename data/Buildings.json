@@ -475,7 +475,49 @@
       "filterId": 0,
       "itemName": "四向分流器",
       "attributes": {
-        "area": [2, 2]
+        "area": [1, 1]
+      }
+    },
+    "小型储物仓": {
+      "parameters": {
+        "bans": 0,
+        "storageType": 0,
+        "filters": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      },
+      "index": -1,
+      "itemId": 2101,
+      "modelIndex": 51,
+      "areaIndex": 0,
+      "localOffset": [
+        {
+          "x": -1,
+          "y": -1,
+          "z": 2
+        },
+        {
+          "x": -1,
+          "y": -1,
+          "z": 2
+        }
+      ],
+      "yaw": [0, 0],
+      "tilt": 0,
+      "pitch": 0,
+      "tilt2": 0,
+      "pitch2": 0,
+      "outputObjIdx": -1,
+      "inputObjIdx": 1,
+      "outputToSlot": 14,
+      "inputFromSlot": 15,
+      "outputFromSlot": 15,
+      "inputToSlot": 14,
+      "outputOffset": 0,
+      "inputOffset": 0,
+      "recipeId": 0,
+      "filterId": 0,
+      "itemName": "小型储物仓",
+      "attributes": {
+        "area": [1, 1]
       }
     },
     "电弧熔炉": {

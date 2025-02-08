@@ -40,8 +40,6 @@ function newBulprint(title = "新蓝图", size = { x: 1, y: 1 }, dragBoxSize = s
 }
 
 const inserterIds = [2011, 2012, 2013, 2014]; // 分拣器id
-export const ROW_HEIGHT_1 = 10; // 集装分拣器回收时一行的高度
-export const ROW_HEIGHT_2 = 15;
 
 const SMELTER_SOLT_REVERSE = [-1, -1, -1, -1, -1, -1, 8, -1, 6];
 const LAB_SOLT_REVERSE = [-1, -1, -1, -1, -1, -1, 8, 7, 6];
@@ -313,7 +311,11 @@ export class BlueprintBuilder {
     });
     this.buleprint.buildingsMap = buildingMap;
 
-    this.connectRows();
+    if (this.buleprint.recycleMode === 1) {
+      this.connectRows();
+    } else {
+      //todo...
+    }
 
     // 遍历时为建筑分配 index，从 0 开始，只有 index 为空时才分配，并将新分配 index 的建筑对象 加入到 buleprint.buildings 中
     let index = 0;

@@ -32,8 +32,24 @@ interface Recipe {
 
 import { recipes, items } from "../data/Vanilla.json";
 import { buildings, inserterSettings } from "../data/Buildings.json";
-import { BlueprintBuilder, ROW_HEIGHT_1, ROW_HEIGHT_2 } from "./buleprint/builder";
-import { INSERTER_TYPE, BELT_LEVEL, SMELTER, CHEMICAL, LAB, STATION, HADRON_COLLIDER, RAW_FACTORY, PRO_LIST, SPRAY_COATER } from "./buleprint/constant";
+import { BlueprintBuilder } from "./buleprint/builder";
+import {
+  INSERTER_TYPE,
+  BELT_LEVEL,
+  SMELTER,
+  CHEMICAL,
+  LAB,
+  STATION,
+  HADRON_COLLIDER,
+  RAW_FACTORY,
+  PRO_LIST,
+  SPRAY_COATER,
+  SPLITTER_4DIR,
+  STORAGE,
+} from "./buleprint/constant";
+
+const ROW_HEIGHT_1 = 10; // 集装分拣器回收时一行的高度
+const ROW_HEIGHT_2 = 8; // 四向分流器一行的高度
 
 const ITEM_NAME_MAP = items.reduce((a, b) => a.set(b.Name, b), new Map());
 const ITEM_ID_MAP = items.reduce((a, b) => a.set(b.ID, b), new Map());
@@ -104,7 +120,7 @@ function pushMatrix(matrix, buildings) {
 
 export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, insertType, recycleMode, rows, stackSize, floor, stationPiler, proNum }) {
   try {
-    const produceUnits = mergeProduceUnits(allProduceUnits, surplusList, produces);
+    const produceUnits = checkProduceUnits(allProduceUnits, surplusList, produces, recycleMode);
     const { order, rawMaterial } = orderRecipe(produceUnits);
     console.log("原料:", rawMaterial);
     console.log("订单:", order);
@@ -203,7 +219,7 @@ function orderRecipe(produceUnits) {
 }
 
 // 校验与整理
-function mergeProduceUnits(allProduceUnits, surplusList = {}, produces) {
+function checkProduceUnits(allProduceUnits, surplusList = {}, produces, recycleMode) {
   if (Object.entries(produces).length !== 1) {
     throw new Error("只支持生产一种物品。");
   }
@@ -213,6 +229,12 @@ function mergeProduceUnits(allProduceUnits, surplusList = {}, produces) {
   }
   if (Object.keys(surplusList).length > 1) {
     throw new Error("副产物只能有一种。");
+  }
+  if (recycleMode === 2) {
+    // 四向分流器回收时，不能对撞机
+    if (allProduceUnits.find((unit) => HADRON_COLLIDER === unit.factory)) {
+      throw new Error("四向分流器回收时，不能有对撞机。");
+    }
   }
   round(allProduceUnits); // 取整，防止精度问题
 
@@ -230,6 +252,15 @@ function mergeProduceUnits(allProduceUnits, surplusList = {}, produces) {
     unit.recipeId = recipes[unit.recipe].ID; // 传入的 recipe 是下标，比ID少1，此处换为ID
   });
   return allProduceUnits;
+}
+
+// 检查坐标是数字
+function checkPointer(pointer) {
+  if ((pointer.x ?? pointer.localOffset?.[0]?.x) >= 0 && (pointer.y ?? pointer.localOffset?.[0]?.y) >= 0) {
+    return true;
+  }
+  console.log("pointer:", pointer);
+  throw new Error("坐标位置异常");
 }
 
 /**
@@ -291,14 +322,18 @@ class MixedConveyerBeltBuleprint {
     this.rowCount = rowCount;
     this.beltLevel = beltType;
     this.inserterMixLevel = recycleMode === 1 ? 3 : insertType;
-    if (recycleMode === 2) throw new Error("敬请期待...");
-    this.inserterMixLevel = insertType; // debug 使用
+    this.inserterMixLevel = insertType;
     this.recycleMode = recycleMode;
-    this.stackCount = stackSize;
     this.floor = floor;
     this.stationPiler = stationPiler;
     this.proliferatorLevel = proNum === 4 ? 3 : proNum; // 选择的喷涂级别没有3，4为MK.III，修改为3
     this.belt = new BeltUnit(this);
+    if (recycleMode === 2) {
+      stackSize = 1; // 回向分流器回收不可堆叠
+      this.rowCount = 2; // 固定两行
+    }
+
+    this.stackCount = stackSize;
     this.shareSize = this.stackCount * 15; // 一份的容量
 
     const produceMap = produceUnits.filter((unit) => unit.grossOutput > 0).reduce((a, b) => a.set(b.recipeId, b), new Map());
@@ -365,8 +400,18 @@ class MixedConveyerBeltBuleprint {
         });
     }
     // 分配物流塔
-    for (let i = 0; i < stationItems.length; i += 4) {
-      this.stations.push(new StationUnit(this, stationItems.slice(i, i + 4), this.stations.length));
+    if (this.recycleMode === 1) {
+      for (let i = 0; i < stationItems.length; i += 4) {
+        this.stations.push(new StationUnit(this, stationItems.slice(i, i + 4), this.stations.length));
+      }
+    } else {
+      this.stations.push(
+        new StationUnit(
+          this,
+          stationItems.filter((item) => item.item && item.type === 2),
+          0
+        )
+      );
     }
   }
 
@@ -419,6 +464,7 @@ class MixedConveyerBeltBuleprint {
    * @param {*} name
    */
   createBuildingInfo(name, localOffset = { x: 0, y: 0, z: 0 }) {
+    checkPointer(localOffset);
     const building = JSON.parse(BUILDINGS_STRING.get(name));
     building.localOffset[0].x = localOffset.x;
     building.localOffset[0].y = localOffset.y;
@@ -500,8 +546,8 @@ class MixedConveyerBeltBuleprint {
     this.matrix = []; // 蓝图坐标矩阵
     this.buildingsRow.forEach((buildings) => {
       // 初始化一行 12 x maxRow 的二维数组
-      this.matrix.push(...Array.from({ length: this.height }, () => Array(maxWidth + 4).fill(null)));
-      let beginX = 2;
+      this.matrix.push(...Array.from({ length: this.height }, () => Array(maxWidth + (this.recycleMode === 1 ? 4 : 1)).fill(null)));
+      let beginX = this.recycleMode === 1 ? 2 : 1;
       // 生成建筑、下游传送带、副产传送带
       buildings.forEach((building) => {
         building.generateUpstream(beginX, beginY); // 生成上游传送带，需要从右向左生成
@@ -583,28 +629,27 @@ class BuildingUnit {
     this.inserters = getInserterScheme(Math.max(Math.ceil(this.produce.grossOutput / this.buleprint.shareSize), 2), this.buleprint.inserterMixLevel);
     this.itemId = ITEM_NAME_MAP.get(this.produce.item).ID;
     // 计算宽度
-    if (this.buleprint.recycleMode === 1) {
-      this.width = this.produce.factoryNumber * buildings[this.produce.factory].attributes.area[0] * 2; // 建筑宽
-      if (LAB.includes(this.produce.factory)) {
-        if (this.buleprint.floor < this.produce.factoryNumber) {
-          throw new Error(`${this.produce.factory} 层高 ${this.buleprint.floor} 小于建筑高度 ${this.produce.factoryNumber}`);
-        }
-        this.width = buildings[this.produce.factory].attributes.area[0] * 2; // 研究站可堆叠
-      } else if (
-        ["原油精炼厂", ...SMELTER, ...CHEMICAL, HADRON_COLLIDER].includes(this.produce.factory) &&
-        this.recipe.Results.includes(this.buleprint.produceId)
-      ) {
-        // 是最终产物时
-        this.width += 1;
-      } else if (this.produce.item !== this.buleprint.produce) {
-        this.width += this.inserters.length; // 加分拣器宽度
+    this.width = this.produce.factoryNumber * buildings[this.produce.factory].attributes.area[0] * 2; // 建筑宽
+    if (LAB.includes(this.produce.factory)) {
+      if (this.buleprint.floor < this.produce.factoryNumber) {
+        throw new Error(`${this.produce.factory} 层高 ${this.buleprint.floor} 小于建筑高度 ${this.produce.factoryNumber}`);
       }
-      if (this.produce.factory === HADRON_COLLIDER && this.getSurplus()) {
-        this.width += this.produce.factoryNumber; // 粒子对撞机有副产物时需要多1格
-      }
-      this.width += 1; // 加1格输入到总线
-    } else {
-      this.width = this.buleprint.width * 2;
+      this.width = buildings[this.produce.factory].attributes.area[0] * 2; // 研究站可堆叠
+    } else if (
+      ["原油精炼厂", ...SMELTER, ...CHEMICAL, HADRON_COLLIDER].includes(this.produce.factory) &&
+      this.recipe.Results.includes(this.buleprint.produceId)
+    ) {
+      // 是最终产物时
+      this.width += 1;
+    } else if (this.produce.item !== this.buleprint.produce) {
+      this.width += this.inserters.length; // 加分拣器宽度
+    }
+    if (this.produce.factory === HADRON_COLLIDER && this.getSurplus()) {
+      this.width += this.produce.factoryNumber; // 粒子对撞机有副产物时需要多1格
+    }
+    this.width += 1; // 加1格输入到总线
+    if (this.buleprint.recycleMode === 2) {
+      this.width += 2; // 再加上四向分流器
     }
 
     console.log(`建筑：${this.produce.factory}, 输出：${this.produce.item}, 副产：${this.buleprint.surplus}, 宽度：${this.width}, 分拣器：`, this.inserters);
@@ -900,35 +945,41 @@ class BuildingUnit {
 
   // 最终产物进塔
   generateProductBelt(beginX, beginY) {
-    let y = beginY + 6;
-    if (LAB.includes(this.produce.factory)) {
-      y = beginY + 8;
-    } else if (CHEMICAL.includes(this.produce.factory)) {
-      y = beginY + 7;
-    } else if (HADRON_COLLIDER === this.produce.factory) {
-      y = beginY + 8;
+    if (this.buleprint.recycleMode === 1) {
+      let y = beginY + 6;
+      if (LAB.includes(this.produce.factory)) {
+        y = beginY + 8;
+      } else if (CHEMICAL.includes(this.produce.factory)) {
+        y = beginY + 7;
+      } else if (HADRON_COLLIDER === this.produce.factory) {
+        y = beginY + 8;
+      }
+      this.buleprint.belt.generateBelt({ x: beginX + this.width - 1, y: y, z: 0 }, { x: beginX + this.width, y: 5, z: 0 }, ["y", "x", "z"]); // 最终产物进塔的第4个槽
     }
-    this.buleprint.belt.generateBelt({ x: beginX + this.width - 1, y: y, z: 0 }, { x: beginX + this.width, y: 5, z: 0 }, ["y", "x", "z"]); // 最终产物进塔的第4个槽
   }
 
   // 生成下游传送带
   generateDownstream(beginX, beginY) {
-    const y = this.buleprint.height + beginY - 1;
-    for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
-      this.buleprint.belt.generateBelt({ x: beginX, y, z: z + 1 }, { x: beginX + this.width, y, z: z + 1 });
+    if (this.buleprint.recycleMode === 1) {
+      const y = this.buleprint.height + beginY - 1;
+      for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
+        this.buleprint.belt.generateBelt({ x: beginX, y, z: z + 1 }, { x: beginX + this.width, y, z: z + 1 });
+      }
     }
   }
 
   // 生成上游传送带
   generateUpstream(beginX, beginY) {
-    for (let y = 0; y < this.buleprint.belt.belts.length; y++) {
-      this.buleprint.belt.generateBelt({ x: beginX + this.width, y: 2 - y + beginY, z: 0 }, { x: beginX, y: 2 - y + beginY, z: 0 });
+    if (this.buleprint.recycleMode === 1) {
+      for (let y = 0; y < this.buleprint.belt.belts.length; y++) {
+        this.buleprint.belt.generateBelt({ x: beginX + this.width, y: 2 - y + beginY, z: 0 }, { x: beginX, y: 2 - y + beginY, z: 0 });
+      }
     }
   }
 
   // 生成副产带子
   generateSurplusBelt(beginX, beginY) {
-    if (this.buleprint.surplus) {
+    if (this.buleprint.recycleMode === 1 && this.buleprint.surplus) {
       const y = this.buleprint.height + beginY - 1;
       const z = this.buleprint.belt.belts.length + 1;
       this.buleprint.belt.generateBelt({ x: beginX, y, z }, { x: beginX + this.width, y, z });
@@ -936,23 +987,26 @@ class BuildingUnit {
   }
   // 生成建筑
   generate(beginX, beginY) {
-    switch (this.produce.factory) {
-      case "矩阵研究站":
-      case "自演化研究站":
-        this.generateLab(beginX, beginY);
-        break;
-      case "微型粒子对撞机":
-        this.generateHadronCollider(beginX, beginY);
-        break;
-      case "原油精炼厂":
-        this.generateOilRefinery(beginX, beginY);
-        break;
-      case "化工厂":
-      case "量子化工厂":
-        this.generateChemicalPlant(beginX, beginY);
-        break;
-      default:
-        this.generateDefault(beginX, beginY);
+    if (this.buleprint.recycleMode === 1) {
+      switch (this.produce.factory) {
+        case "矩阵研究站":
+        case "自演化研究站":
+          this.generateLab(beginX, beginY);
+          break;
+        case "微型粒子对撞机":
+          this.generateHadronCollider(beginX, beginY);
+          break;
+        case "原油精炼厂":
+          this.generateOilRefinery(beginX, beginY);
+          break;
+        case "化工厂":
+        case "量子化工厂":
+          this.generateChemicalPlant(beginX, beginY);
+          break;
+        default:
+          this.generateDefault(beginX, beginY);
+      }
+    } else {
     }
   }
 
@@ -1050,48 +1104,59 @@ class StationUnit {
     this.requireItems
       .filter((item) => !PRO_LIST.includes(item.item))
       .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item], this.buleprint.inserterMixLevel)));
-    this.provideItems
-      .filter((item) => item.item !== this.buleprint.produce) // 主产物不分配分拣器
-      .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item], this.buleprint.inserterMixLevel)));
-    this.width = this.getLeftWidth() + 8 + this.getRightWidth();
-    console.log(
-      `物流塔 ${this.stationIndex} 宽 ${this.width}-(${this.getLeftWidth()}, ${this.getRightWidth()}) 需求：`,
-      this.requireItems,
-      "，供应：",
+    if (this.buleprint.recycleMode === 1) {
       this.provideItems
-    );
+        .filter((item) => item.item !== this.buleprint.produce) // 主产物不分配分拣器
+        .forEach((item) => (item.inserter = getInserterScheme(this.buleprint.belt.itemMap[item.item], this.buleprint.inserterMixLevel)));
+      this.width = this.getLeftWidth() + 8 + this.getRightWidth();
+      console.log(
+        `物流塔 ${this.stationIndex} 宽 ${this.width}-(${this.getLeftWidth()}, ${this.getRightWidth()}) 需求：`,
+        this.requireItems,
+        "，供应：",
+        this.provideItems
+      );
+    } else {
+      this.requireItems = this.requireItems.filter((item) => !PRO_LIST.includes(item.item));
+      // 四向分流器时只计算需求
+      this.width = this.requireItems.map((item) => (item.width = Math.max(4, 3 + item.inserter.length))).reduce((a, b) => a + b, 0);
+      console.log(`原料 ${this.requireItems.length}，宽 ${this.width}，需求 `, this.requireItems);
+    }
   }
 
   // 生成上游传送带
   generateUpstream(beginX, beginY) {
-    let branchEnd = 0;
-    if (this.stationIndex === 0) {
-      // 第一个塔需要将总线分叉并下沉到1层
-      branchEnd = (this.buleprint.proliferatorLevel > 0 ? 4 : 0) + 2;
-    }
+    if (this.buleprint.recycleMode === 1) {
+      let branchEnd = 0;
+      if (this.stationIndex === 0) {
+        // 第一个塔需要将总线分叉并下沉到1层
+        branchEnd = (this.buleprint.proliferatorLevel > 0 ? 4 : 0) + 2;
+      }
 
-    let y = beginY + 1;
-    for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
-      this.buleprint.belt.generateBelt({ x: beginX + this.width, y, z: z + 1 }, { x: beginX + branchEnd, y, z: z + 1 });
-    }
-    if (this.stationIndex === 0) {
-      this.buleprint.belt.belts.forEach((_, z) => {
-        this.buleprint.belt.generateBelt({ x: beginX + branchEnd, y, z: z + 1 }, { x: beginX, y: 2 - z, z: 0 }, ["y", "z", "x"], "x");
-      });
+      let y = beginY + 1;
+      for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
+        this.buleprint.belt.generateBelt({ x: beginX + this.width, y, z: z + 1 }, { x: beginX + branchEnd, y, z: z + 1 });
+      }
+      if (this.stationIndex === 0) {
+        this.buleprint.belt.belts.forEach((_, z) => {
+          this.buleprint.belt.generateBelt({ x: beginX + branchEnd, y, z: z + 1 }, { x: beginX, y: 2 - z, z: 0 }, ["y", "z", "x"], "x");
+        });
+      }
     }
   }
 
   // 生成下游，从左到右生成
   generateDownstream(beginX, beginY) {
-    const y = this.buleprint.height + beginY - 1;
-    for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
-      this.buleprint.belt.generateBelt({ x: beginX, y, z: z + 1 }, { x: beginX + this.width, y, z: z + 1 });
+    if (this.buleprint.recycleMode === 1) {
+      const y = this.buleprint.height + beginY - 1;
+      for (let z = 0; z < this.buleprint.belt.belts.length; z++) {
+        this.buleprint.belt.generateBelt({ x: beginX, y, z: z + 1 }, { x: beginX + this.width, y, z: z + 1 });
+      }
     }
   }
 
   // 生成副产带子
   generateSurplusBelt(beginX, beginY) {
-    if (this.stationIndex === 0 && this.buleprint.surplus) {
+    if (this.stationIndex === 0 && this.buleprint.surplus && this.buleprint.recycleMode === 1) {
       // 副产开始的带子
       const begin = { x: beginX, y: beginY + this.buleprint.height - 1, z: this.buleprint.belt.belts.length + 1 };
       if (this.buleprint.surplusCount < 0) {
@@ -1121,7 +1186,56 @@ class StationUnit {
       }
     }
   }
+
   generate(beginX, beginY) {
+    if (this.buleprint.recycleMode === 1) {
+      this.generateStation(beginX, beginY);
+    } else {
+      this.generates4Dir(beginX, beginY);
+    }
+  }
+
+  generates4Dir(beginX, beginY) {
+    let begin = beginX;
+    this.requireItems.forEach((item) => {
+      const pointer = { x: begin + item.width - 1, y: beginY + 4, z: 0 };
+      this.buleprint.belt.generateSplitter4Dir(pointer, [null, { type: "in" }, { type: "out", filter: item.item }, { type: "out" }]);
+      this.buleprint.belt.generateBelt({ x: pointer.x - 1, y: pointer.y, z: 0 }, { x: begin, y: pointer.y, z: 0 }, ["x", "y", "z"]);
+      // 回收物品的带子
+      const belts = this.buleprint.belt.generateBelt({ x: pointer.x, y: pointer.y - 1, z: 0 }, { x: pointer.x - item.inserter.length, y: 0, z: 0 }, ["y", "x", "z"]);
+      belts[2].parameters = { iconId: ITEM_NAME_MAP.get(item.item).ID };
+      this.buleprint.belt.generateBelt({ x: pointer.x - 1, y: pointer.y - 1, z: 0 }, { x: begin + 1, y: pointer.y, z: 0, outputToSlot: 2 }, ["x", "y", "z"]);
+
+      // 生成分拣器
+      item.inserter.forEach((inserter, index) => {
+        // 先生成带子
+        if (inserter.length < 3) {
+          this.buleprint.belt.generateBelt(
+            { x: pointer.x - 1 - index, y: beginY + inserter.length, z: 0 },
+            { x: pointer.x - 1 - index, y: pointer.y - 1, z: 0, outputToSlot: 2 },
+            ["x", "y", "z"]
+          );
+        }
+        // 生成分拣器
+        this.buleprint.createInserter(
+          inserter.level,
+          this.buleprint.belt.getBelt({ x: pointer.x - 1 - index, y: beginY, z: 0 }),
+          this.buleprint.belt.getBelt({ x: pointer.x - 1 - index, y: beginY + inserter.length, z: 0 })
+        );
+      });
+      // 结束时调整 beginX
+      begin += item.width;
+    });
+    // 延长总线
+    this.buleprint.belt.generateBelt({ x: beginX, y: beginY + 4, z: 0 }, { x: beginX, y: beginY, z: 0 }, ["y", "x", "z"]);
+    // 生成喷涂机
+    if (this.buleprint.proliferatorLevel > 0) {
+      const spray = this.buleprint.createBuildingInfo(SPRAY_COATER, { x: beginX, y: beginY + 2, z: 0 });
+      spray.yaw = [0, 0];
+    }
+  }
+
+  generateStation(beginX, beginY) {
     let y = beginY + 1; // 物流塔从1开始，由于计算偏移时会向上取整，所以虽然是第2行，但是仍然从1开始
     let stationBeginX = beginX + this.getLeftWidth();
     // 生成建筑
@@ -1391,7 +1505,7 @@ class BeltUnit {
   }
 
   compute() {
-    const filterItems = [this.buleprint.produce]; //过滤增产和主产物，副产物不为氢时从总线中回收
+    const filterItems = [this.buleprint.produce]; //过滤增产和主产物
     if (!PRO_LIST.includes(this.buleprint.produce)) {
       // 不生产增产剂时，无需将增产剂加入到总线中
       filterItems.push(...PRO_LIST);
@@ -1430,7 +1544,7 @@ class BeltUnit {
     }
     const shareCount = items.reduce((a, b) => a + b.share, 0);
     const beltCount = Math.ceil(shareCount / beltSize);
-    if (beltCount > 3) {
+    if (beltCount > (this.buleprint.recycleMode === 1 ? 3 : 1)) {
       throw new Error("中间产物数量超过传送带最大容量。");
     }
     const beltUsage = [];
@@ -1510,6 +1624,8 @@ class BeltUnit {
    * @param {*} zDirectForward 升降提前几格
    */
   generateBelt(begin, end, priority = ["x", "y", "z"], zDirection = "x", zDirectForward = 1) {
+    checkPointer(begin);
+    checkPointer(end);
     let current = begin;
     let zDirectionAdded = false;
     let lastDirection = priority[0]; // 上一次的方向
@@ -1620,5 +1736,58 @@ class BeltUnit {
       station.parameters.slots[end.stationSlot].dir = 2;
     }
     return belts;
+  }
+
+  /**
+   *
+   * @param {*} solts 上、右、下、左：{ type: in|out, priority, filter}
+   */
+  generateSplitter4Dir(pointer, solts = [], storage = true) {
+    checkPointer(pointer);
+    const splitter = this.buleprint.createBuildingInfo(SPLITTER_4DIR, pointer);
+    if (storage) {
+      const storageObj = this.buleprint.createBuildingInfo(STORAGE, { x: pointer.x, y: pointer.y, z: 2 });
+      storageObj.inputObjIdx = splitter;
+    }
+    solts.forEach((solt, i) => {
+      if (solt) {
+        const begin = Object.assign({}, pointer); // 入口方向
+        const end = Object.assign({}, pointer); // 出口方向
+        switch (i) {
+          case 0:
+            end.y += 1;
+            begin.y += 0.2;
+            break;
+          case 1:
+            end.x += 1;
+            begin.x += 0.2;
+            break;
+          case 2:
+            end.y -= 1;
+            begin.y -= 0.2;
+            break;
+          case 3:
+            end.x -= 1;
+            begin.x -= 0.2;
+            break;
+        }
+        const first = this.createBelt(begin); // 内部的带子
+        const second = this.createBelt(end); // 外部的带子
+        if (solt.type === "in") {
+          second.outputObjIdx = first; // 外部带子输出到内部带子
+          first.outputObjIdx = splitter; // 内部带子输出到分流器
+          first.outputToSlot = i; // 分流器输入槽
+        } else {
+          first.outputObjIdx = second; // 内部带子输出到外部带子
+          first.inputObjIdx = splitter; // 分流器输入到内部带子
+          first.inputFromSlot = i; // 分流器输出槽
+        }
+        (solt.priority || solt.filter) && (splitter.parameters.priority[i] = true);
+        (solt.priority || solt.filter) && (splitter.parameters.priority[i] = true);
+        if (solt.filter) {
+          splitter.filterId = typeof solt.filter === "string" ? ITEM_NAME_MAP.get(solt.filter).ID : solt.filter;
+        }
+      }
+    });
   }
 }
