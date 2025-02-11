@@ -20,5 +20,5 @@
 
 基于混带总线的黑盒蓝图生成器。
 
-- 量化计算部分基于：![戴森球量化计算器]([text](https://github.com/DSPCalculator/dsp-calc))
-- 蓝图生成的代码来源于：![DSP蓝图变换工具]([text](https://github.com/cying314/edit-dspblue-print))
+- 量化计算部分基于：https://github.com/DSPCalculator/dsp-calc
+- 蓝图生成的代码来源于：https://github.com/cying314/edit-dspblue-print
