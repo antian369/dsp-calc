@@ -322,7 +322,6 @@ class MixedConveyerBeltBuleprint {
     this.rowCount = rowCount;
     this.beltLevel = beltType;
     this.inserterMixLevel = recycleMode === 1 ? 3 : insertType;
-    this.inserterMixLevel = insertType;
     this.recycleMode = recycleMode;
     this.floor = floor;
     this.stationPiler = stationPiler;
@@ -1550,7 +1549,7 @@ class StationUnit {
           y: beginY + 4,
           z: 0,
           stationSlot: 5,
-          storageIdx: this.buleprint.produceIndex === PRO_LIST[this.buleprint.proliferatorLevel - 1] ? 2 : 1, // 喷涂机输出槽位，生产喷涂并喷涂自身时，从第2个槽输出
+          storageIdx: this.buleprint.produce === PRO_LIST[this.buleprint.proliferatorLevel - 1] ? 2 : 1, // 喷涂机输出槽位，生产喷涂并喷涂自身时，从第2个槽输出
         },
         { x: beginX + this.getLeftWidth() - 2, y: 3 - this.buleprint.belt.belts.length, z: 1 },
         ["x", "z", "y"],
@@ -1814,7 +1813,7 @@ class BeltUnit {
     const beltSize = BELT_SHARE_SIZE[this.buleprint.beltLevel]; // 单条带子最大值
     if (items.length / beltSize > 3) {
       // 物品数不能超过3个传送带
-      throw new Error("中间产物种类数量超过传送带最大容量。");
+      throw new Error("中间产物种类数量超过传送带最大容量，请修改配方减少中间产物。");
     }
     this.buleprint.multiple = Math.ceil(items[0].share / beltSize);
     if (this.buleprint.multiple > 1) {

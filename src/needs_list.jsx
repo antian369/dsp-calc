@@ -88,8 +88,8 @@ export function NeedsList({needs_list, set_needs_list}) {
                         onClick={() => set_needs_list({})}>清空需求
                 </button>
                 <ItemSelect text="添加需求物品" set_item={add_need}/>
-                <ItemSelect text="添加现有产线" set_item={add_npl}
-                            btn_class="btn btn-sm btn-outline-success text-nowrap"/>
+                {/* <ItemSelect text="添加现有产线" set_item={add_npl}
+                            btn_class="btn btn-sm btn-outline-success text-nowrap"/> */}
             </div>
 
             {Object.keys(needs_list).length == 0 ||

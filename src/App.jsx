@@ -106,8 +106,8 @@ function GameVersion({needs_list, set_needs_list}) {
 
     return <div className="d-flex gap-2 align-items-center">
         <div className="text-nowrap">游戏版本 v{vanilla_game_version}</div>
-        <div className="text-nowrap">模组选择</div>
-        <Select style={{minWidth: 250}} mode={"multiple"} options={mod_options} value={mods} onChange={mods_change}/>
+        {/* <div className="text-nowrap">模组选择</div>
+        <Select style={{minWidth: 250}} mode={"multiple"} options={mod_options} value={mods} onChange={mods_change}/> */}
     </div>;
 }
 
@@ -139,18 +139,18 @@ function AppWithContexts() {
 
     return <>
         {/*游戏版本、模组选择*/}
-        <div className="d-flex column-gap-4 row-gap-2 flex-wrap">
+        {/* <div className="d-flex column-gap-4 row-gap-2 flex-wrap">
             <GameVersion needs_list={needs_list} set_needs_list={set_needs_list}/>
-        </div>
+        </div> */}
         {/*生产策略、需求列表、清空数据缓存按钮、采矿参数&其他设置是否显示按钮*/}
-        <div className="d-flex column-gap-4 row-gap-2 flex-wrap">
+        {/* <div className="d-flex column-gap-4 row-gap-2 flex-wrap">
             <SchemeStorage/>
             <NeedsListStorage needs_list={needs_list} set_needs_list={set_needs_list}/>
             <button className="btn btn-outline-danger btn-sm" onClick={clearData}>清空数据缓存</button>
             <button className="btn btn-outline-primary btn-sm" onClick={() => set_misc_show(s => !s)}>
                 采矿参数 & 其他设置
             </button>
-        </div>
+        </div> */}
         {/*采矿参数&其他设置*/}
         <UserSettings show={misc_show}/>
         {/*添加需求、批量预设、计算结果*/}
