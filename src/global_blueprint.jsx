@@ -370,19 +370,14 @@ class MixedConveyerBeltBuleprint {
 
     // 副产是否参与生产
     console.log(`副产: ${this.surplus}, 副产数量:${this.surplusCount}, 副产参与生产:${this.surplusJoinProduct}`);
-
     // 物流塔物品种类数：喷涂 + 产出 + 副产 + 原矿 ...
-    const stationItems = [
-      this.proliferatorLevel > 0
-        ? {
-            item: PRO_LIST[this.proliferatorLevel - 1],
-            type: 2,
-          }
-        : {
-            type: 2,
-          }, //第一个固定是喷涂，如果未选择喷涂留空
-      { item: produce, type: 1 },
-    ]; // {item, type}, 物流塔，type 1-需求，2供应
+    const proliferatorItem = { type: 2 };
+    const stationItems = [proliferatorItem, { item: produce, type: 1 }]; // {item, type}, 物流塔，type 1-需求，2供应
+    // 如何蓝图用于生产喷涂剂，而且喷涂剂也要用于喷涂，第一个槽留从，喷涂剂从第二个槽输出
+    if (this.proliferatorLevel > 0 && this.produce !== PRO_LIST[this.proliferatorLevel - 1]) {
+      // 只有当需求喷涂，而且不生产喷涂剂时，喷涂剂从第一个槽输出
+      proliferatorItem.item = PRO_LIST[this.proliferatorLevel - 1];
+    }
     // 加入副产
     if (this.surplus && this.surplusCount !== 0) {
       stationItems.push({
@@ -1548,8 +1543,15 @@ class StationUnit {
       for (y = 0; y < this.buleprint.belt.belts.length; y++) {
         this.buleprint.createBuildingInfo(SPRAY_COATER, { x: beginX + 2, y: 2 - y, z: 0 });
       }
+      // 喷涂剂输出
       this.buleprint.belt.generateBelt(
-        { x: beginX + this.getLeftWidth(), y: beginY + 4, z: 0, stationSlot: 5, storageIdx: 1 }, // 物流塔槽位1
+        {
+          x: beginX + this.getLeftWidth(),
+          y: beginY + 4,
+          z: 0,
+          stationSlot: 5,
+          storageIdx: this.buleprint.produceIndex === PRO_LIST[this.buleprint.proliferatorLevel - 1] ? 2 : 1, // 喷涂机输出槽位，生产喷涂并喷涂自身时，从第2个槽输出
+        },
         { x: beginX + this.getLeftWidth() - 2, y: 3 - this.buleprint.belt.belts.length, z: 1 },
         ["x", "z", "y"],
         "y"
