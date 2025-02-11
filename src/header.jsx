@@ -20,11 +20,11 @@ export function Header() {
             </Navbar.Brand>
             <Navbar.Toggle aria-controls="navbarNav"/>
             <Navbar.Collapse id="navbarNav">
-                {/* <Nav>
-                    <Nav.Link href="https://github.com/DSPCalculator/dsp-calc">开源仓库</Nav.Link>
-                    <Nav.Link href="https://www.bilibili.com/read/readlist/rl630834" target="_blank">逻辑原理</Nav.Link>
-                    <Nav.Link href="https://space.bilibili.com/16051534">联系作者</Nav.Link>
-                </Nav> */}
+                <Nav>
+                    <Nav.Link href="https://github.com/antian369/dsp-calc">开源仓库</Nav.Link>
+                    {/* <Nav.Link href="https://www.bilibili.com/read/readlist/rl630834" target="_blank">逻辑原理</Nav.Link> */}
+                    <Nav.Link href="https://space.bilibili.com/439080925">联系作者</Nav.Link>
+                </Nav>
                 {/* <Nav>
                     <OverlayTrigger
                         placement="bottom"
