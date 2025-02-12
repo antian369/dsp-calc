@@ -268,7 +268,7 @@ function checkPointer(pointer) {
  */
 class MixedConveyerBeltBuleprint {
   recycleMode = 1; // 回收方式: 1-"集装分拣器"，2-"四向分流器"
-  stackCount = 4; // 堆叠数量: 1 | 2 | 4
+  stackSize = 4; // 堆叠数量: 1 | 2 | 4
   inserterMixLevel = 2; // 输入混带的最高级别：0-分拣器，1-高速分拣器，2-极速分拣器, 3-集装分拣器
   proliferatorLevel = 0; // 喷涂：0-无，1-MK.1，2-MK.2，3-MK.3
   beltLevel = 2; // 传送带级别：0-黄带，1-绿带，2-蓝带
@@ -321,19 +321,25 @@ class MixedConveyerBeltBuleprint {
     this.rawMaterial = rawMaterial;
     this.rowCount = rowCount;
     this.beltLevel = beltType;
-    this.inserterMixLevel = recycleMode === 1 ? 3 : insertType;
-    this.recycleMode = recycleMode;
     this.floor = floor;
-    this.stationPiler = stationPiler;
     this.proliferatorLevel = proNum === 4 ? 3 : proNum; // 选择的喷涂级别没有3，4为MK.III，修改为3
     this.belt = new BeltUnit(this);
+
+    this.stationPiler = stationPiler;
+    if (stationPiler === 1) {
+      // 物流塔有装载，一定是集装分拣器，一定有4层堆叠
+      recycleMode = 1;
+      stackSize = 4;
+    }
+    this.inserterMixLevel = recycleMode === 1 ? 3 : insertType;
+    this.recycleMode = recycleMode;
     if (recycleMode === 2) {
       stackSize = 1; // 回向分流器回收不可堆叠
       this.rowCount = 2; // 固定两行
     }
 
-    this.stackCount = stackSize;
-    this.shareSize = this.stackCount * 15; // 一份的容量
+    this.stackSize = stackSize;
+    this.shareSize = this.stackSize * 15; // 一份的容量
 
     const produceMap = produceUnits.filter((unit) => unit.grossOutput > 0).reduce((a, b) => a.set(b.recipeId, b), new Map());
     this.buildings = order.map((recipe) => new BuildingUnit(this, recipe, produceMap.get(recipe.ID)));
@@ -925,11 +931,12 @@ class BuildingUnit {
         "y" // 延y轴方向上升
       );
       // 生成集装分拣器
-      this.buleprint.createInserter(
-        3,
-        this.buleprint.belt.getBelt({ x: productBeginX, y: realY, z: 0 }),
-        this.buleprint.belt.getBelt({ x: productBeginX - 1, y: realY, z: 0 })
-      );
+      this.buleprint.stackSize > 1 &&
+        this.buleprint.createInserter(
+          3,
+          this.buleprint.belt.getBelt({ x: productBeginX, y: realY, z: 0 }),
+          this.buleprint.belt.getBelt({ x: productBeginX - 1, y: realY, z: 0 })
+        );
       // 生成分拣器对接的带子
       this.inserters.forEach((inserter, index) => {
         if (inserter.length < 3) {
@@ -1350,13 +1357,13 @@ class StationUnit {
       // 第三个带子一定是原料
       const top = this.items[2] ? Math.max(this.items[2].inserter.length + 1, 3) : 0;
       // 按最后两个产物的最大长度
-      const bottom = this.items[3] ? Math.max(this.items[3].inserter.length + 1, 3) : 0;
+      const bottom = this.items[3] ? Math.max(this.items[3].inserter.length + 2, 4) : 0;
       let width = Math.max(top, bottom);
-      width += width > 0 ? 1 : 0; // 有输出时多1格，物流塔+传送带宽度取整
-      if (this.stationIndex === 0 && this.buleprint.surplusJoinProduct) {
-        // 有副产参与生产
-        width += 1;
-      }
+      // width += width > 0 ? 1 : 0; // 有输出时多1格，物流塔+传送带宽度取整
+      // if (this.stationIndex === 0 && this.buleprint.surplusJoinProduct) {
+      //   // 有副产参与生产
+      //   width += 1;
+      // }
       return width;
     } else {
       console.log("todo ...");
@@ -1607,7 +1614,7 @@ class StationUnit {
       1 // 提前1格上升
     );
     // 物流塔集装分拣
-    this.buleprint.createInserter(3, belts[3], belts[2], this.items[itemIndex].item);
+    this.buleprint.stationPiler === 2 && this.buleprint.stackSize > 1 && this.buleprint.createInserter(3, belts[3], belts[2], this.items[itemIndex].item);
     // 输入总线的带子
     this.buleprint.belt.generateBelt({ x: recycEndX, y: y + 1, z }, { x: recycMidX, y: y - 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "y");
     // 生成分拣器带子
@@ -1652,7 +1659,7 @@ class StationUnit {
       "y"
     );
     // 物流塔集装分拣
-    this.buleprint.createInserter(3, belts[3], belts[2], this.items[itemIndex].item);
+    this.buleprint.stationPiler === 2 && this.buleprint.stackSize > 1 && this.buleprint.createInserter(3, belts[3], belts[2], this.items[itemIndex].item);
     // 输入总线的带子
     const inputBeginX = x - this.items[itemIndex].inserter.length + 1; // 输入起点
     this.buleprint.belt.generateBelt({ x: inputBeginX, y, z }, { x: x + 2, y: y + 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "x");
@@ -1705,7 +1712,7 @@ class StationUnit {
       1 // 提前1格上升
     );
     // 物流塔集装分拣
-    this.buleprint.createInserter(3, belts[3], belts[2], this.items[itemIndex].item);
+    this.buleprint.stationPiler === 2 && this.buleprint.stackSize > 1 && this.buleprint.createInserter(3, belts[3], belts[2], this.items[itemIndex].item);
     // 输入总线的带子
     this.buleprint.belt.generateBelt({ x: recycEndX, y: y - 1, z }, { x: recycMidX, y: y + 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "y");
     // 生成分拣器带子
@@ -1750,7 +1757,7 @@ class StationUnit {
       "y"
     );
     // 物流塔集装分拣
-    this.buleprint.createInserter(3, belts[3], belts[2], this.items[itemIndex].item);
+    this.buleprint.stationPiler === 2 && this.buleprint.stackSize > 1 && this.buleprint.createInserter(3, belts[3], belts[2], this.items[itemIndex].item);
     // 输入总线的带子
     const inputBeginX = x + this.items[itemIndex].inserter.length - 1; // 输入起点
     this.buleprint.belt.generateBelt({ x: inputBeginX, y, z }, { x: x - 2, y: y - 1, z: busZ, outputToSlot: 2 }, ["x", "z", "y"], "x");
