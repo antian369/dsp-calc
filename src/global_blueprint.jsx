@@ -119,46 +119,36 @@ function pushMatrix(matrix, buildings) {
 }
 
 export function computeBlueprint({ allProduceUnits, surplusList, produces, beltType, insertType, recycleMode, rows, stackSize, floor, stationPiler, proNum }) {
-  try {
-    const produceUnits = checkProduceUnits(allProduceUnits, surplusList, produces, recycleMode);
-    const { order, rawMaterial } = orderRecipe(produceUnits);
-    console.log("原料:", rawMaterial);
-    console.log("订单:", order);
-    const buleprint = new MixedConveyerBeltBuleprint(
-      Object.keys(produces)[0],
-      Object.values(produces)[0],
-      produceUnits,
-      surplusList,
-      order,
-      rawMaterial,
-      rows,
-      beltType,
-      insertType,
-      recycleMode,
-      stackSize,
-      floor,
-      stationPiler,
-      proNum
-    );
-    buleprint.compute();
-    return buleprint;
-  } catch (e) {
-    console.error(e.stack);
-    alert(e.message);
-  }
+  const produceUnits = checkProduceUnits(allProduceUnits, surplusList, produces, recycleMode);
+  const { order, rawMaterial } = orderRecipe(produceUnits);
+  console.log("原料:", rawMaterial);
+  console.log("订单:", order);
+  const buleprint = new MixedConveyerBeltBuleprint(
+    Object.keys(produces)[0],
+    Object.values(produces)[0],
+    produceUnits,
+    surplusList,
+    order,
+    rawMaterial,
+    rows,
+    beltType,
+    insertType,
+    recycleMode,
+    stackSize,
+    floor,
+    stationPiler,
+    proNum
+  );
+  buleprint.compute();
+  return buleprint;
 }
 
 export function generateBlueprint(buleprint) {
-  try {
-    const bp = new BlueprintBuilder("新蓝图", buleprint);
-    const str = bp.toStr();
-    // 将s加入到剪切板
-    // navigator.clipboard.writeText(str);
-    return str;
-  } catch (e) {
-    console.error(e.stack);
-    alert(e.message);
-  }
+  const bp = new BlueprintBuilder("新蓝图", buleprint);
+  const str = bp.toStr();
+  // 将s加入到剪切板
+  // navigator.clipboard.writeText(str);
+  return str;
 }
 
 /**

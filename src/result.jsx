@@ -360,10 +360,14 @@ export function Result({needs_list, set_needs_list}) {
     const [beltUtilization, setBeltUtilization] = useState(null);
     
     const handleGenerate = (allProduceUnits, surplusList, produces) => {
-        const buleprint = handleCalculate(allProduceUnits, surplusList, produces);
-        const blueprintStr = generateBlueprint(buleprint);
-        if (textareaRef.current) {
-            textareaRef.current.value = blueprintStr;
+        try{
+            const buleprint = handleCalculate(allProduceUnits, surplusList, produces);
+            const blueprintStr = generateBlueprint(buleprint);
+            if (textareaRef.current) {
+                textareaRef.current.value = blueprintStr;
+            }
+        } catch(e) {
+            textareaRef.current.value = e.message;
         }
     };
     
@@ -683,11 +687,11 @@ export function Result({needs_list, set_needs_list}) {
                     </table>
                     <div className="d-flex flex-column align-items-center">
                         <div className="d-flex gap-2">
-                            <button className="btn btn-outline-primary text-nowrap"
+                            {/* <button className="btn btn-outline-primary text-nowrap"
                                 onClick={() => handleCalculate(produceUnits, lp_surplus_list, needs_list)}>
                                 <div>计算</div>
-                            </button>
-                            <button className="btn btn-outline-primary text-nowrap"
+                            </button> */}
+                            <button className="btn btn-primary btn-sm text-nowrap px-4"
                                 onClick={() => handleGenerate(produceUnits, lp_surplus_list, needs_list)}>
                                 <div>生成</div>
                             </button>    
