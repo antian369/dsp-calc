@@ -380,7 +380,7 @@ export function Result({needs_list, set_needs_list}) {
         const rows = scheme_data.scheme_for_recipe["行数"] || 1;
         const stackSize = scheme_data.scheme_for_recipe["堆叠"] || 1;
         const floor = scheme_data.scheme_for_recipe["层高"] || 15;
-        const stationPiler = scheme_data.scheme_for_recipe["物流站"] || 1;
+        const stationPiler = scheme_data.scheme_for_recipe["物流站"] || 2;
         const proNum = scheme_data.scheme_for_recipe["增产点数"] || 0;
 
         // 获取对应的名称
@@ -536,7 +536,10 @@ export function Result({needs_list, set_needs_list}) {
                                 />
                             </td>
                         </tr>
-                        <tr>
+                        {/* 当回收模式是四向分流器(2)时才显示这些选项 */}
+                        {scheme_data.scheme_for_recipe["回收"] === 2 && (
+                            <>
+                                <tr>
                             <td className="d-flex align-items-center text-nowrap">
                                 <span className="ms-auto me-1">分拣器</span>
                             </td>
@@ -557,7 +560,9 @@ export function Result({needs_list, set_needs_list}) {
                                     }}
                                 />
                             </td>
-                        </tr>
+                            </tr>
+                            </>
+                        )}
                         <tr>
                             <td className="d-flex align-items-center text-nowrap">
                                 <span className="ms-auto me-1">回收</span>
@@ -579,102 +584,108 @@ export function Result({needs_list, set_needs_list}) {
                                 />
                             </td>
                         </tr>
-                        <tr>
-                            <td className="d-flex align-items-center text-nowrap">
-                                <span className="ms-auto me-1">行数</span>
-                            </td>
-                            <td className="ps-2 text-nowrap">
-                                <HorizontalMultiButtonSelect 
-                                    choice={scheme_data.scheme_for_recipe["行数"] || 1} 
-                                    options={[
-                                        {value: 1, label: "1"},
-                                        {value: 2, label: "2"},
-                                        {value: 3, label: "3"},
-                                        {value: 4, label: "4"},
-                                        {value: 5, label: "5"}
-                                    ]}
-                                    onChange={(value) => {
-                                        set_scheme_data(old_scheme_data => {
-                                            let scheme_data = structuredClone(old_scheme_data);
-                                            scheme_data.scheme_for_recipe["行数"] = value;
-                                            return scheme_data;
-                                        })
-                                    }}
-                                    className={"raw-text-selection"}
-                                />
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="d-flex align-items-center text-nowrap">
-                                <span className="ms-auto me-1">堆叠</span>
-                            </td>
-                            <td className="ps-2 text-nowrap">
-                                <HorizontalMultiButtonSelect 
-                                    choice={scheme_data.scheme_for_recipe["堆叠"] || 1} 
-                                    options={[
-                                        {value: 1, label: "1"},
-                                        {value: 2, label: "2"},
-                                        {value: 3, label: "3"},
-                                        {value: 4, label: "4"}
-                                    ]}
-                                    onChange={(value) => {
-                                        set_scheme_data(old_scheme_data => {
-                                            let scheme_data = structuredClone(old_scheme_data);
-                                            scheme_data.scheme_for_recipe["堆叠"] = value;
-                                            return scheme_data;
-                                        })
-                                    }}
-                                    className={"raw-text-selection"}
-                                />
-                            </td>
-                        </tr>
-                        {/* <tr>
-                            <td className="d-flex align-items-center text-nowrap">
-                                <span className="ms-auto me-1">层高</span>
-                            </td>
-                            <td className="ps-2 text-nowrap">
-                                <select 
-                                    value={scheme_data.scheme_for_recipe["层高"] || 15}
-                                    onChange={(e) => {
-                                        set_scheme_data(old_scheme_data => {
-                                            let scheme_data = structuredClone(old_scheme_data);
-                                            scheme_data.scheme_for_recipe["层高"] = parseInt(e.target.value);
-                                            return scheme_data;
-                                        })
-                                    }}
-                                    className="form-select form-select-sm"
-                                    style={{width: 'auto', minWidth: '70px'}}
-                                >
-                                    {[3,5,7,9,11,13,15].map(value => (
-                                        <option key={value} value={value}>
-                                            {value}
-                                        </option>
-                                    ))}
-                                </select>
-                            </td>
-                        </tr> */}
-                        <tr>
-                            <td className="d-flex align-items-center text-nowrap">
-                                <span className="ms-auto me-1">物流站</span>
-                            </td>
-                            <td className="ps-2 text-nowrap">
-                                <HorizontalMultiButtonSelect 
-                                    choice={scheme_data.scheme_for_recipe["物流站"] || 1}
-                                    options={[
-                                        {value: 1, label: "有装载"},
-                                        {value: 2, label: "无装载"}
-                                    ]}
-                                    onChange={(value) => {
-                                        set_scheme_data(old_scheme_data => {
-                                            let scheme_data = structuredClone(old_scheme_data);
-                                            scheme_data.scheme_for_recipe["物流站"] = parseInt(value);
-                                            return scheme_data;
-                                        })
-                                    }}
-                                    className={"raw-text-selection"}
-                                />
-                            </td>
-                        </tr>
+                        {/* 当回收模式不是四向分流器(2)时才显示这些选项 */}
+                        {scheme_data.scheme_for_recipe["回收"] === 1 && (
+                            <>
+                                <tr>
+                                    <td className="d-flex align-items-center text-nowrap">
+                                        <span className="ms-auto me-1">行数</span>
+                                    </td>
+                                    <td className="ps-2 text-nowrap">
+                                        <HorizontalMultiButtonSelect 
+                                            choice={scheme_data.scheme_for_recipe["行数"] || 1} 
+                                            options={[
+                                                {value: 1, label: "1"},
+                                                {value: 2, label: "2"},
+                                                {value: 3, label: "3"},
+                                                {value: 4, label: "4"},
+                                                {value: 5, label: "5"}
+                                            ]}
+                                            onChange={(value) => {
+                                                set_scheme_data(old_scheme_data => {
+                                                    let scheme_data = structuredClone(old_scheme_data);
+                                                    scheme_data.scheme_for_recipe["行数"] = value;
+                                                    return scheme_data;
+                                                })
+                                            }}
+                                            className={"raw-text-selection"}
+                                        />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="d-flex align-items-center text-nowrap">
+                                        <span className="ms-auto me-1">堆叠</span>
+                                    </td>
+                                    <td className="ps-2 text-nowrap">
+                                        <HorizontalMultiButtonSelect 
+                                            choice={scheme_data.scheme_for_recipe["物流站"] === 1 ? 4 : (scheme_data.scheme_for_recipe["堆叠"] || 1)} 
+                                            options={[
+                                                {value: 1, label: "1"},
+                                                {value: 2, label: "2"},
+                                                {value: 3, label: "3"},
+                                                {value: 4, label: "4"}
+                                            ]}
+                                            onChange={(value) => {
+                                                set_scheme_data(old_scheme_data => {
+                                                    let scheme_data = structuredClone(old_scheme_data);
+                                                    scheme_data.scheme_for_recipe["堆叠"] = value;
+                                                    return scheme_data;
+                                                })
+                                            }}
+                                            className={"raw-text-selection"}
+                                            disabled={scheme_data.scheme_for_recipe["物流站"] === 1}
+                                        />
+                                    </td>
+                                </tr>
+                                {/* <tr>
+                                    <td className="d-flex align-items-center text-nowrap">
+                                        <span className="ms-auto me-1">层高</span>
+                                    </td>
+                                    <td className="ps-2 text-nowrap">
+                                        <select 
+                                            value={scheme_data.scheme_for_recipe["层高"] || 15}
+                                            onChange={(e) => {
+                                                set_scheme_data(old_scheme_data => {
+                                                    let scheme_data = structuredClone(old_scheme_data);
+                                                    scheme_data.scheme_for_recipe["层高"] = parseInt(e.target.value);
+                                                    return scheme_data;
+                                                })
+                                            }}
+                                            className="form-select form-select-sm"
+                                            style={{width: 'auto', minWidth: '70px'}}
+                                        >
+                                            {[3,5,7,9,11,13,15].map(value => (
+                                                <option key={value} value={value}>
+                                                    {value}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                </tr> */}
+                                <tr>
+                                    <td className="d-flex align-items-center text-nowrap">
+                                        <span className="ms-auto me-1">物流站</span>
+                                    </td>
+                                    <td className="ps-2 text-nowrap">
+                                        <HorizontalMultiButtonSelect 
+                                            choice={scheme_data.scheme_for_recipe["物流站"] || 2}
+                                            options={[
+                                                {value: 1, label: "有装载"},
+                                                {value: 2, label: "无装载"}
+                                            ]}
+                                            onChange={(value) => {
+                                                set_scheme_data(old_scheme_data => {
+                                                    let scheme_data = structuredClone(old_scheme_data);
+                                                    scheme_data.scheme_for_recipe["物流站"] = parseInt(value);
+                                                    return scheme_data;
+                                                })
+                                            }}
+                                            className={"raw-text-selection"}
+                                        />
+                                    </td>
+                                </tr>
+                            </>
+                        )}
                         <tr>
                             <td className="d-flex align-items-center text-nowrap">
                                 <span className="ms-auto me-1">利用率</span>

@@ -1810,7 +1810,7 @@ class BeltUnit {
     const beltSize = BELT_SHARE_SIZE[this.buleprint.beltLevel]; // 单条带子最大值
     if (items.length / beltSize > 3) {
       // 物品数不能超过3个传送带
-      throw new Error("中间产物种类数量超过传送带最大容量，请修改配方减少中间产物。");
+      throw new Error(`中间产物 ${items.length} 种，超过传送带最大容量 (${beltSize} * 3 = ${beltSize * 3})，请修改配方减少中间产物种类。`);
     }
     this.buleprint.multiple = Math.ceil(items[0].share / beltSize);
     if (this.buleprint.multiple > 1) {
@@ -1818,8 +1818,9 @@ class BeltUnit {
     }
     const shareCount = items.reduce((a, b) => a + b.share, 0);
     const beltCount = Math.ceil(shareCount / beltSize);
+    const maxBeltCount = this.buleprint.recycleMode === 1 ? 3 : 1;
     if (beltCount > (this.buleprint.recycleMode === 1 ? 3 : 1)) {
-      throw new Error("中间产物数量超过传送带最大容量。");
+      throw new Error(`中间产物 ${shareCount} 份，超过传送带最大容量 ${beltSize} * ${maxBeltCount} = ${beltSize * maxBeltCount}(份)。`);
     }
     const beltUsage = [];
     const beltItems = []; // item[][]
@@ -1840,7 +1841,7 @@ class BeltUnit {
         }
       }
       if (!allocate) {
-        throw new Error("中间产物数量超过传送带最大容量。");
+        throw new Error(`分配 ${item.item} 时超过传送带最大容量。`);
       }
       this.itemMap[item.item] = item.share;
     });
@@ -1848,9 +1849,8 @@ class BeltUnit {
     this.belts = beltItems.map((belt) => new Map(belt.map((item) => [item.item, item.share])));
     console.log("总线分布：", this.belts);
 
-    const itemsCount = this.buleprint.produceUnits.filter((unit) => !filterItems.includes(unit.item)).reduce((a, b) => a + b.theoryOutput, 0);
     // 传送带利用率：总物品数
-    this.beltUsageRate = ((itemsCount / this.buleprint.multiple / (beltCount * beltSize * this.buleprint.shareSize)) * 100).toFixed(2);
+    this.beltUsageRate = ((shareCount / this.buleprint.multiple / (beltCount * (beltSize + 1))) * 100).toFixed(2);
   }
 
   /**
