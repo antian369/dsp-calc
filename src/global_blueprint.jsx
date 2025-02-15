@@ -1334,8 +1334,8 @@ class StationUnit {
       } else {
         // 不是第一个塔，按前两个出口的最大长度
         const top = this.items[0] ? Math.max(this.items[0].inserter.length + 1, 3) : 0; // 至少3格
-        const bottom = this.items[1] ? Math.max(this.items?.[1]?.inserter?.length + 2, 4) : 0; // 至少4格
-        return Math.max(top, bottom);
+        const bottom = this.items[1] ? Math.max(this.items?.[1]?.inserter?.length + 1, 3) : 0; // 至少4格
+        return Math.max(top, bottom) + 1; // 物流塔占3.5+3.5，实际使用为8 ，所以在左侧补1格
       }
     } else {
       console.log("todo ...");
@@ -1347,13 +1347,16 @@ class StationUnit {
       // 第三个带子一定是原料
       const top = this.items[2] ? Math.max(this.items[2].inserter.length + 1, 3) : 0;
       // 按最后两个产物的最大长度
-      const bottom = this.items[3] ? Math.max(this.items[3].inserter.length + 2, 4) : 0;
+      const bottom = this.items[3] ? Math.max(this.items[3].inserter.length + 1, 3) : 0;
       let width = Math.max(top, bottom);
-      // width += width > 0 ? 1 : 0; // 有输出时多1格，物流塔+传送带宽度取整
-      // if (this.stationIndex === 0 && this.buleprint.surplusJoinProduct) {
-      //   // 有副产参与生产
-      //   width += 1;
-      // }
+      if (this.stationIndex === 0 && this.buleprint.surplusJoinProduct) {
+        // 有副产参与生产
+        width += 1;
+      }
+      if (this.stationIndex === this.buleprint.stations.length - 1) {
+        // 最后一个塔时多1格
+        width += 1;
+      }
       return width;
     } else {
       console.log("todo ...");
@@ -1429,9 +1432,12 @@ class StationUnit {
         } else {
           // 副产参与生产且不足
           this.buleprint.belt.generateBelt(begin, { x: beginX + this.width, y: begin.y, z: begin.z, outputToSlot: 2 }, ["x", "y", "z"], "y");
+          // 副产氢带子的对接位置为 right top 的宽度
+          const rightTop = this.items[2] ? Math.max(this.items[2].inserter.length + 1, 3) : 0;
+          const rightTopX = beginX + this.getLeftWidth() + Math.ceil(buildings[STATION].attributes.area[0]) * 2 + rightTop;
           this.buleprint.belt.generateBelt(
             { x: beginX + this.width, y: begin.y, z: begin.z },
-            { x: beginX + this.width - 1, y: beginY + 4, z: 6, outputToSlot: 2 },
+            { x: rightTopX, y: beginY + 4, z: 6, outputToSlot: 2 },
             ["y", "z", "x"],
             "y",
             1
