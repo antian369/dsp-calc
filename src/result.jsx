@@ -537,7 +537,7 @@ export function Result({needs_list, set_needs_list}) {
                             </td>
                         </tr>
                         {/* 当回收模式是四向分流器(2)时才显示这些选项 */}
-                        {scheme_data.scheme_for_recipe["回收"] === 2 && (
+                        {scheme_data.scheme_for_recipe["回收"] !== 1 && (
                             <>
                                 <tr>
                             <td className="d-flex align-items-center text-nowrap">
