@@ -1467,7 +1467,7 @@ class StationUnit {
     let begin = beginX + 1;
     this.requireItems.forEach((item) => {
       const pointer = { x: begin + item.width - 1, y: beginY + 4, z: 0 };
-      this.buleprint.belt.generateSplitter4Dir(pointer, [null, { type: "in" }, { type: "out", filter: item.item }, { type: "out" }]);
+      this.buleprint.belt.generateSplitter4Dir(pointer, [null, { type: "in" }, { type: "out", filter: item.item }, { type: "out" }], true); // 原料处加小箱子
       this.buleprint.belt.generateBelt({ x: pointer.x - 1, y: pointer.y, z: 0 }, { x: begin, y: pointer.y, z: 0 }, ["x", "y", "z"]);
       // 回收物品的带子
       const belts = this.buleprint.belt.generateBelt(
