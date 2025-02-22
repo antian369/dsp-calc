@@ -444,9 +444,9 @@ class MixedConveyerBeltBuleprint {
       }
     });
     console.log(`第${i}行，宽度：${rowWidth}, aggWidth:${aggWidth}, 建筑：`, this.buildingsRow[i]);
-    // 最后一行有可能是空行，在这里截断
-    this.rowCount = i + 1;
-    this.buildingsRow = this.buildingsRow.slice(0, i + 1);
+    // 截断空行
+    this.rowCount = this.buildingsRow.filter((row) => row.length > 0).length;
+    this.buildingsRow = this.buildingsRow.slice(0, this.rowCount);
   }
 
   /**
@@ -1522,7 +1522,7 @@ class StationUnit {
       if (item.item) {
         this.stationObj.parameters.storage[i].itemId = ITEM_NAME_MAP.get(item.item).ID;
         this.stationObj.parameters.storage[i].localRole = item.type;
-        this.stationObj.parameters.storage[i].max = 5000;
+        this.stationObj.parameters.storage[i].max = 0;
       }
     });
     // 主产物进塔
