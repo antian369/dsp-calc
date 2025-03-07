@@ -318,7 +318,7 @@ export class BlueprintBuilder {
     });
     const buildingMap = new Map();
     const rowLength = this.buleprint.matrix[0].length;
-    this.buleprint.buildingsMap.values().forEach((building) => {
+    Array.from(this.buleprint.buildingsMap.values()).forEach((building) => {
       let key = `${building.itemName}-${building.localOffset[0].x}-${building.localOffset[0].y}-${building.localOffset[0].z}`;
       if (Math.ceil((building.localOffset[0].y + 1) / this.buleprint.height) % 2 === 0) {
         this.buildingReverse(building, rowLength);

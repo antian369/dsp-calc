@@ -213,6 +213,9 @@ function checkProduceUnits(allProduceUnits, surplusList = {}, produces, recycleM
   if (Object.entries(produces).length !== 1) {
     throw new Error("只支持生产一种物品。");
   }
+  if (allProduceUnits.filter(unit => recipes[unit.recipe].Type === 1).length < 2 ) {
+    throw new Error("蓝图至少包含两个配方。");
+  }
   const producePro = PRO_LIST.find((item) => produces[item]);
   if (!producePro && allProduceUnits.find((unit) => PRO_LIST.includes(unit.item) && !unit.isMineralized)) {
     throw new Error("必须将增产剂设置为原矿。");
@@ -1835,16 +1838,16 @@ class BeltUnit {
       beltUsage.push(0);
     }
     // 分配物品到传送带
-    items.forEach((item) => {
+    items.sort((a, b) => b.share - a.share).forEach((item) => {
       let allocate = false;
-      for (let i = 0; i < beltUsage.length; i++) {
-        // 优先分到内侧
-        if (beltUsage[i] + item.share <= beltSize) {
-          beltItems[i].push(item);
-          beltUsage[i] += item.share;
-          allocate = true;
-          break;
-        }
+      // 尽量平均分到两个带子
+      // 获得 beltUsage 最小值与下标
+      const minUsage = Math.min(...beltUsage);
+      const minUsageIndex = beltUsage.indexOf(minUsage);
+      if (beltUsage[minUsageIndex] + item.share <= beltSize) {
+        beltItems[minUsageIndex].push(item);
+        beltUsage[minUsageIndex] += item.share;
+        allocate = true;
       }
       if (!allocate) {
         throw new Error(`分配 ${item.item} 时超过传送带最大容量。`);

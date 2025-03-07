@@ -367,6 +367,7 @@ export function Result({needs_list, set_needs_list}) {
                 textareaRef.current.value = blueprintStr;
             }
         } catch(e) {
+            console.error(e);
             textareaRef.current.value = e.message;
         }
     };
