@@ -213,7 +213,7 @@ function checkProduceUnits(allProduceUnits, surplusList = {}, produces, recycleM
   if (Object.entries(produces).length !== 1) {
     throw new Error("只支持生产一种物品。");
   }
-  if (allProduceUnits.filter(unit => recipes[unit.recipe].Type === 1).length < 2 ) {
+  if (allProduceUnits.filter(unit => recipes[unit.recipe].Type >= 0).length < 2 ) {
     throw new Error("蓝图至少包含两个配方。");
   }
   const producePro = PRO_LIST.find((item) => produces[item]);
@@ -355,6 +355,10 @@ class MixedConveyerBeltBuleprint {
           // 正好足够
           this.surplusCount = 0;
         }
+      }else if (!unitH.grossOutput && !Object.keys(surplusList).length && Object.entries(unitH.sideProducts || {}).length) {
+        // 没有副产，氢的需求为0，但是有副产配方，表示氢正好
+        this.surplus = "氢";
+        this.surplusCount = 0;
       }
     }
 
@@ -1427,11 +1431,11 @@ class StationUnit {
     if (this.stationIndex === 0 && this.buleprint.surplus && this.buleprint.recycleMode === 1) {
       // 副产开始的带子
       const begin = { x: beginX, y: beginY + this.buleprint.height - 1, z: this.buleprint.belt.belts.length + 1 };
-      if (this.buleprint.surplusCount < 0) {
+      if (this.buleprint.surplusCount <= 0) {
         if (this.buleprint.surplusCount === 0 && this.buleprint.surplusJoinProduct) {
           // 副产参与生产，数量正好，集装后从右侧直接接入总线
           const busZ = this.buleprint.belt.getBeltIndex(this.buleprint.surplus);
-          this.buleprint.belt.generateBelt(begin, { x: beginX + this.width, y: beginY + 1, z: busZ, outputToSlot: 2 }, ["x", "y", "z"], "y");
+          this.buleprint.belt.generateBelt(begin, { x: beginX + this.width, y: beginY + 1, z: busZ + 1, outputToSlot: 2 }, ["x", "z", "y"], "y");
         } else {
           // 副产参与生产且不足
           this.buleprint.belt.generateBelt(begin, { x: beginX + this.width, y: begin.y, z: begin.z, outputToSlot: 2 }, ["x", "y", "z"], "y");
@@ -1450,8 +1454,8 @@ class StationUnit {
         if (this.buleprint.recycleMode === 1) {
           this.buleprint.createInserter(
             3,
-            this.buleprint.belt.getBelt({ x: beginX + this.width, y: begin.y - 2, z: begin.z }),
-            this.buleprint.belt.getBelt({ x: beginX + this.width, y: begin.y - 1, z: begin.z })
+            this.buleprint.belt.getBelt({ x: beginX + this.width - 1, y: begin.y, z: begin.z }),
+            this.buleprint.belt.getBelt({ x: beginX + this.width - 2, y: begin.y, z: begin.z })
           );
         }
       }
