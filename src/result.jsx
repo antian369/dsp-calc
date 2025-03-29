@@ -671,8 +671,8 @@ export function Result({needs_list, set_needs_list}) {
                                         <HorizontalMultiButtonSelect 
                                             choice={scheme_data.scheme_for_recipe["物流站"] || 2}
                                             options={[
-                                                {value: 1, label: "有装载"},
-                                                {value: 2, label: "无装载"}
+                                                {value: 1, label: "4集装"},
+                                                {value: 2, label: "无集装"}
                                             ]}
                                             onChange={(value) => {
                                                 set_scheme_data(old_scheme_data => {
@@ -709,7 +709,7 @@ export function Result({needs_list, set_needs_list}) {
                             </button>    
                         </div>
                         <div className="mt-2">
-                            <textarea ref={textareaRef} rows="5" cols="20" readOnly/>
+                            <textarea ref={textareaRef} rows="5" cols="20" readOnly onclick="this.select()"/>
                         </div>  
                     </div>
                 </fieldset>
