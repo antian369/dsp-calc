@@ -216,6 +216,9 @@ function checkProduceUnits(allProduceUnits, surplusList = {}, produces, recycleM
   if (allProduceUnits.filter(unit => recipes[unit.recipe].Type >= 0).length < 2 ) {
     throw new Error("蓝图至少包含两个配方。");
   }
+  if (allProduceUnits.find(unit => unit.item === "蓄电器（满）")) {
+    throw new Error("不支持包含 [蓄电器（满）] 的配方。");
+  }
   const producePro = PRO_LIST.find((item) => produces[item]);
   if (!producePro && allProduceUnits.find((unit) => PRO_LIST.includes(unit.item) && !unit.isMineralized)) {
     throw new Error("必须将增产剂设置为原矿。");
