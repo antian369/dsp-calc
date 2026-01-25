@@ -638,9 +638,9 @@ export function Result({needs_list, set_needs_list}) {
                                         />
                                     </td>
                                 </tr>
-                                {/* <tr>
+<tr>
                                     <td className="d-flex align-items-center text-nowrap">
-                                        <span className="ms-auto me-1">层高</span>
+                                        <span className="ms-auto me-1">研究站堆叠</span>
                                     </td>
                                     <td className="ps-2 text-nowrap">
                                         <select 
@@ -662,7 +662,7 @@ export function Result({needs_list, set_needs_list}) {
                                             ))}
                                         </select>
                                     </td>
-                                </tr> */}
+                                </tr>
                                 <tr>
                                     <td className="d-flex align-items-center text-nowrap">
                                         <span className="ms-auto me-1">物流站</span>
@@ -709,7 +709,7 @@ export function Result({needs_list, set_needs_list}) {
                             </button>    
                         </div>
                         <div className="mt-2">
-                            <textarea ref={textareaRef} rows="5" cols="20" readOnly onclick="this.select()"/>
+                            <textarea ref={textareaRef} rows="5" cols="20" readOnly onClick="this.select()"/>
                         </div>  
                     </div>
                 </fieldset>

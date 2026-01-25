@@ -553,10 +553,10 @@ class MixedConveyerBeltBlueprint {
   /**
    * 生成地图二维数组
    */
-  generate() {
+generate() {
     // 找到最长的行
     const maxWidth = this.buildingsRow.map((unit) => unit.reduce((a, b) => a + b.width, 0)).reduce((a, b) => Math.max(a, b), 0);
-    this.height = this.recycleMode === 1 ? ROW_HEIGHT_1 : ROW_HEIGHT_2; // 回收模式为集装分拣器时，高度为11，否则为15
+    this.height = this.recycleMode === 1 ? ROW_HEIGHT_INSERTER : ROW_HEIGHT_4DIR; // 回收模式为集装分拣器时，高度为11，否则为15
     let beginY = this.recycleMode === 1 ? 0 : 1;
     this.matrix = []; // 蓝图坐标矩阵
     this.buildingsRow.forEach((buildings) => {
@@ -653,7 +653,7 @@ class BuildingUnit {
       // if (this.blueprint.floor < this.produce.factoryNumber) {
       //   throw new Error(`“${this.produce.factory}”堆叠${this.produce.factoryNumber}层，不能超过${this.blueprint.floor}层`);
       // }
-      this.width = Math.ceil(this.produce.factoryNumber / LAB_STACK_MAX_HEIGHT) * buildings[this.produce.factory].attributes.area[0] * 2; // 研究站可堆叠
+      this.width = Math.ceil(this.produce.factoryNumber / this.blueprint.floor) * buildings[this.produce.factory].attributes.area[0] * 2; // 研究站可堆叠
     } else if (
       ["原油精炼厂", ...SMELTER, ...CHEMICAL, HADRON_COLLIDER].includes(this.produce.factory) &&
       this.recipe.Results.includes(this.blueprint.produceId)
@@ -681,13 +681,13 @@ class BuildingUnit {
     // 对于建筑来讲，从传送带往下开始
     let x = beginX;
     let y = beginY + 2;
-    // 生成建筑,尽可能均分 factories 到每个堆叠中，且不超过 LAB_STACK_MAX_HEIGHT。
-    let labStacks = Math.ceil(this.produce.factoryNumber / LAB_STACK_MAX_HEIGHT);
+// 生成建筑,尽可能均分 factories 到每个堆叠中，且不超过 floor。
+    let labStacks = Math.ceil(this.produce.factoryNumber / this.blueprint.floor);
     let baseFactories = [];
     let totalCnt = 0;
     for(let stackIdx = 0; stackIdx < labStacks; stackIdx++) {
       let lastFactory
-      for (let labLevel = 0; labLevel < LAB_STACK_MAX_HEIGHT; labLevel++) {
+      for (let labLevel = 0; labLevel < this.blueprint.floor; labLevel++) {
         // 建筑是一个方形，将矩阵中相应位置填入建筑
         const factoryObj = this.blueprint.createBuildingInfo(this.produce.factory, {
           x: x + Math.ceil(this.factoryInfo.attributes.area[0]) + stackIdx * Math.ceil(this.factoryInfo.attributes.area[0]) * 2, // 建筑宽度一半向上取整
@@ -1093,12 +1093,12 @@ class BuildingUnit {
     // 生成建筑
     let x = beginX + this.inserters.length;
     let y = pointer.y;
-    let labStacks = Math.ceil(this.produce.factoryNumber / LAB_STACK_MAX_HEIGHT);
+let labStacks = Math.ceil(this.produce.factoryNumber / this.blueprint.floor);
     let baseFactories = [];
     let totalCnt = 0;
     for (let stackIdx = 0; stackIdx < labStacks; stackIdx++) {
       let lastFactory;
-      for (let labLevel = 0; labLevel < LAB_STACK_MAX_HEIGHT; labLevel++) {
+      for (let labLevel = 0; labLevel < this.blueprint.floor; labLevel++) {
         // 建筑是一个方形，将矩阵中相应位置填入建筑
         const factoryObj = this.blueprint.createBuildingInfo(this.produce.factory, {
           x: x + Math.ceil(this.factoryInfo.attributes.area[0]) + stackIdx * Math.ceil(this.factoryInfo.attributes.area[0]) * 2, // 建筑宽度一半向上取整
