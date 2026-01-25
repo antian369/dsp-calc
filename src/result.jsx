@@ -325,12 +325,12 @@ export function Result({needs_list, set_needs_list}) {
             {/* 所选配方 */}
             <td><RecipeSelect item={i} onChange={change_recipe}
                               choice={scheme_data.item_recipe_choices[i]}/></td>
-            {/* 所选增产模式 */}
-            {/* <td><ProModeSelect recipe_id={recipe_id} onChange={change_pro_mode}
-                               choice={scheme_data.scheme_for_recipe[recipe_id]["增产模式"]}/></td> */}
+{/* 所选增产模式 */}
+            <td><ProModeSelect recipe_id={recipe_id} onChange={change_pro_mode}
+                               choice={scheme_data.scheme_for_recipe[recipe_id]["增产模式"]}/></td>
             {/* 所选增产剂 */}
-            {/* <td><ProNumSelect onChange={change_pro_num}
-                              choice={scheme_data.scheme_for_recipe[recipe_id]["增产点数"]}/></td> */}
+            <td><ProNumSelect onChange={change_pro_num}
+                              choice={scheme_data.scheme_for_recipe[recipe_id]["增产点数"]}/></td>
             {/* 所选工厂种类 */}
             <td><FactorySelect recipe_id={recipe_id} onChange={change_factory}
                                choice={scheme_data.scheme_for_recipe[recipe_id]["建筑"]}/></td>
@@ -473,12 +473,12 @@ export function Result({needs_list, set_needs_list}) {
             <thead>
             <tr className="text-center text-nowrap">
                 <th width={60}>操作</th>
-                <th width={140}>物品</th>
+<th width={140}>物品</th>
                 <th width={130}>产能</th>
                 <th width={110}>工厂</th>
                 <th width={300}>配方选取</th>
-                {/* <th width={180}>增产模式</th> */}
-                {/* <th width={160}>增产剂</th> */}
+                <th width={180}>增产模式</th>
+                <th width={160}>增产剂</th>
                 <th width={170}>工厂类型</th>
             </tr>
             </thead>
