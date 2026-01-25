@@ -4,7 +4,7 @@ import { INSERTER_TYPE, SMELTER, CHEMICAL, LAB, OIL_REFINERY, HADRON_COLLIDER, A
 /**
  * 构建蓝图
  */
-function newBulprint(title = "新蓝图", size = { x: 1, y: 1 }, dragBoxSize = size) {
+function newBlueprint(title = "新蓝图", size = { x: 1, y: 1 }, dragBoxSize = size) {
   return {
     header: {
       layout: 10,
@@ -72,14 +72,15 @@ function buildSlotReverse(factory, slot) {
     return slot;
   }
 }
+
 export class BlueprintBuilder {
-  dspBuleprint; // 游戏中的蓝图
-  buleprint; // 原始蓝图
-  constructor(title, buleprint) {
+  dspBlueprint; // 游戏中的蓝图
+  blueprint; // 原始蓝图
+  constructor(title, blueprint) {
     // 计算size
-    buleprint.generate();
-    this.dspBuleprint = newBulprint(title, { x: buleprint.matrix[0].length, y: buleprint.matrix.length });
-    this.buleprint = buleprint;
+    blueprint.generate();
+    this.dspBlueprint = newBlueprint(title, { x: blueprint.matrix[0].length, y: blueprint.matrix.length });
+    this.blueprint = blueprint;
   }
 
   /**
@@ -130,12 +131,12 @@ export class BlueprintBuilder {
 
   // 连接每行传送带
   connectRows() {
-    const matrix = this.buleprint.matrix;
+    const matrix = this.blueprint.matrix;
     const firstRow = 0;
-    const rowHeight = this.buleprint.height;
+    const rowHeight = this.blueprint.height;
     const lastRow = matrix.length / rowHeight - 1;
     const rowLength = matrix[0].length + 1; //右侧多走一格
-    const beltCount = this.buleprint.belt.belts.length;
+    const beltCount = this.blueprint.belt.belts.length;
     for (let i = 0; i < matrix.length; i += rowHeight) {
       const row = Math.round(i / rowHeight);
       const bottomLeft = matrix[i + 2].find(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0]; // 第一个带子
@@ -147,7 +148,30 @@ export class BlueprintBuilder {
       let nextTopLeft;
       let nextTopRight;
       if (row !== lastRow) {
-        nextBottomLeft = matrix[i + rowHeight + 2].find(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0]; // 第一个带子
+        try {
+          const rowIdx = i + rowHeight + 2;
+          const nextRow = matrix[rowIdx];
+          if (!nextRow) throw new Error(`row undefined at index ${rowIdx}`);
+          const firstNonEmpty = nextRow.find(Boolean);
+          if (!firstNonEmpty) throw new Error(`no non-empty cell in row ${rowIdx}`);
+          const beltObj = firstNonEmpty.find((f) => BELT_LEVEL.includes(f.itemName));
+          if (!beltObj) {
+            // 收集该 cell 中的 itemName 列表以便调试
+            const names = Array.isArray(firstNonEmpty) ? firstNonEmpty.map((c) => c?.itemName).slice(0, 10) : String(firstNonEmpty);
+            throw new Error(`no belt object found in first non-empty cell of row ${rowIdx}, cell items: ${JSON.stringify(names)}`);
+          }
+          if (!beltObj.localOffset || !beltObj.localOffset[0]) throw new Error(`belt object at row ${rowIdx} missing localOffset[0]`);
+          nextBottomLeft = beltObj.localOffset[0]; // 第一个带子
+        } catch (err) {
+          const ctx = {
+            rowIndex: i + rowHeight + 2,
+            matrixLength: matrix.length,
+            rowHeight,
+            i,
+          };
+          // 抛出包含上下文和原始错误消息的错误，便于定位调用链哪一步失败
+          throw new Error(`connectRows: failed to resolve nextBottomLeft. context=${JSON.stringify(ctx)}; cause=${err.message}`);
+        }
         nextBottomRight = (matrix[i + rowHeight + 1].findLast(Boolean) || matrix[i + rowHeight + 2].findLast(Boolean)).find((f) =>
           BELT_LEVEL.includes(f.itemName)
         ).localOffset[0]; // 最后一个带子
@@ -158,14 +182,14 @@ export class BlueprintBuilder {
       if (row === firstRow) {
         // 第一行将右侧连接
         for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
-          this.buleprint.belt.generateBelt({ x: topRight.x, y: topRight.y, z: beltIndex + 1 }, { x: bottomRight.x, y: bottomRight.y, z: beltIndex + 1 });
+          this.blueprint.belt.generateBelt({ x: topRight.x, y: topRight.y, z: beltIndex + 1 }, { x: bottomRight.x, y: bottomRight.y, z: beltIndex + 1 });
         }
       }
       if (row % 2 === 0) {
         //单数行连接左侧
         // 左侧带子抬升
         for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
-          this.buleprint.belt.generateBelt(
+          this.blueprint.belt.generateBelt(
             { x: bottomLeft.x, y: i + 2 - beltIndex, z: 0 },
             { x: 0, y: i + 2 - beltIndex, z: beltIndex + 1 },
             ["z", "x", "y"],
@@ -176,12 +200,12 @@ export class BlueprintBuilder {
         if (row === firstRow && row === lastRow) {
           // 只有一行
           for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
-            this.buleprint.belt.generateBelt({ x: 0, y: i + 2 - beltIndex, z: beltIndex + 1 }, { x: 0, y: rowHeight - 1, z: beltIndex + 1 });
+            this.blueprint.belt.generateBelt({ x: 0, y: i + 2 - beltIndex, z: beltIndex + 1 }, { x: 0, y: rowHeight - 1, z: beltIndex + 1 });
           }
         } else if (row !== lastRow) {
           //左侧下方带子连接
           for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
-            this.buleprint.belt.generateBelt(
+            this.blueprint.belt.generateBelt(
               { x: 0, y: i + 2 - beltIndex, z: beltIndex + 1 },
               { x: nextBottomLeft.x, y: i + 2 - beltIndex + rowHeight, z: 0 },
               ["y", "z", "x"],
@@ -192,30 +216,30 @@ export class BlueprintBuilder {
           if (nextTopLeft.x !== 2) {
             // 下一行的上部填充
             for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
-              this.buleprint.belt.generateBelt(
+              this.blueprint.belt.generateBelt(
                 { x: nextTopLeft.x, y: i + rowHeight * 2 - 1, z: beltIndex + 1 },
                 { x: 2, y: i + rowHeight * 2 - 1, z: beltIndex + 1 }
               );
             }
             // 副产
-            this.buleprint.surplus &&
-              this.buleprint.belt.generateBelt(
+            this.blueprint.surplus &&
+              this.blueprint.belt.generateBelt(
                 { x: nextTopLeft.x, y: i + rowHeight * 2 - 1, z: beltCount + 1 },
                 { x: 2, y: i + rowHeight * 2 - 1, z: beltCount + 1 }
               );
           }
           for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
-            this.buleprint.belt.generateBelt({ x: 2, y: i + rowHeight * 2 - 1, z: beltIndex + 1 }, { x: 2, y: i + rowHeight - 1, z: beltIndex + 1 });
+            this.blueprint.belt.generateBelt({ x: 2, y: i + rowHeight * 2 - 1, z: beltIndex + 1 }, { x: 2, y: i + rowHeight - 1, z: beltIndex + 1 });
           }
           // 副产
-          this.buleprint.surplus &&
-            this.buleprint.belt.generateBelt({ x: 2, y: i + rowHeight * 2 - 1, z: beltCount + 1 }, { x: 2, y: i + rowHeight - 1, z: beltCount + 1 });
+          this.blueprint.surplus &&
+            this.blueprint.belt.generateBelt({ x: 2, y: i + rowHeight * 2 - 1, z: beltCount + 1 }, { x: 2, y: i + rowHeight - 1, z: beltCount + 1 });
         }
 
         if (row === lastRow) {
           // 最后一行是单数时，左侧连接
-          for (let beltIndex = 0; beltIndex < this.buleprint.belt.belts.length; beltIndex++) {
-            this.buleprint.belt.generateBelt(
+          for (let beltIndex = 0; beltIndex < this.blueprint.belt.belts.length; beltIndex++) {
+            this.blueprint.belt.generateBelt(
               { x: 0, y: i + 2 - beltIndex, z: beltIndex + 1 },
               { x: topLeft.x, y: i + rowHeight - 1, z: beltIndex + 1 },
               ["y", "z", "x"],
@@ -229,7 +253,7 @@ export class BlueprintBuilder {
         if (row !== lastRow) {
           for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
             //抬升下方带子
-            this.buleprint.belt.generateBelt(
+            this.blueprint.belt.generateBelt(
               { x: bottomRight.x, y: i + 2 - beltIndex, z: 0 },
               { x: rowLength - 1, y: i + 2 - beltIndex, z: beltIndex + 1 },
               ["x", "z", "y"],
@@ -237,33 +261,33 @@ export class BlueprintBuilder {
               1
             );
             // 下方带子连接下一行
-            this.buleprint.belt.generateBelt(
+            this.blueprint.belt.generateBelt(
               { x: rowLength - 1, y: i + 2 - beltIndex, z: beltIndex + 1 },
               { x: nextBottomRight.x, y: i + 2 + rowHeight - beltIndex, z: 0 },
               ["y", "z", "x"],
               "x"
             );
 
-            this.buleprint.belt.generateBelt(
+            this.blueprint.belt.generateBelt(
               { x: nextTopRight.x, y: i + rowHeight * 2 - 1, z: beltIndex + 1 },
               { x: rowLength - 3, y: i + rowHeight - 1, z: beltIndex + 1 },
               ["x", "z", "y"]
             );
             // 副产
-            this.buleprint.surplus &&
-              this.buleprint.belt.generateBelt(
+            this.blueprint.surplus &&
+              this.blueprint.belt.generateBelt(
                 { x: nextTopRight.x, y: i + rowHeight * 2 - 1, z: beltCount + 1 },
                 { x: rowLength - 3, y: i + rowHeight - 1, z: beltCount + 1 },
                 ["x", "z", "y"]
               );
             // 填充
             if (topRight.x !== rowLength - 3) {
-              this.buleprint.belt.generateBelt(
+              this.blueprint.belt.generateBelt(
                 { x: rowLength - 3, y: i + rowHeight - 1, z: beltIndex + 1 },
                 { x: topRight.x, y: i + rowHeight - 1, z: beltIndex + 1 }
               );
               // 副产
-              this.buleprint.belt.generateBelt(
+              this.blueprint.belt.generateBelt(
                 { x: rowLength - 3, y: i + rowHeight - 1, z: beltCount + 1 },
                 { x: topRight.x, y: i + rowHeight - 1, z: beltCount + 1 }
               );
@@ -272,14 +296,14 @@ export class BlueprintBuilder {
         } else {
           // 最后一行是双数时，右侧连接，先抬升
           for (let beltIndex = 0; beltIndex < beltCount; beltIndex++) {
-            this.buleprint.belt.generateBelt(
+            this.blueprint.belt.generateBelt(
               { x: bottomRight.x, y: i + 2 - beltIndex, z: 0 },
               { x: rowLength - 1, y: i + 2 - beltIndex, z: beltIndex + 1 },
               ["x", "z", "y"],
               "x",
               1
             );
-            this.buleprint.belt.generateBelt(
+            this.blueprint.belt.generateBelt(
               { x: rowLength - 1, y: i + 2 - beltIndex, z: beltIndex + 1 },
               { x: topRight.x, y: topRight.y, z: beltIndex + 1 },
               ["y", "z", "x"],
@@ -292,8 +316,8 @@ export class BlueprintBuilder {
   }
 
   connectRows4Dir() {
-    const matrix = this.buleprint.matrix;
-    const rowHeight = this.buleprint.height;
+    const matrix = this.blueprint.matrix;
+    const rowHeight = this.blueprint.height;
     const rowLength = matrix[0].length;
     const left = matrix[1].find(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0].x; // 第一个带子
     const right = matrix[5].findLast(Boolean).find((f) => BELT_LEVEL.includes(f.itemName)).localOffset[0].x; // 最后一个带子
@@ -301,43 +325,43 @@ export class BlueprintBuilder {
     const nextLeft = matrix[rowHeight + 1].find(Boolean)?.find((f) => BELT_LEVEL.includes(f.itemName))?.localOffset?.[0]?.x || virtualRowX; // 第一个带子
     const nextRight = matrix[rowHeight + 1].findLast(Boolean)?.find((f) => BELT_LEVEL.includes(f.itemName))?.localOffset?.[0]?.x || virtualRowX; // 最后一个带子
     // 连接左侧
-    this.buleprint.belt.generateBelt({ x: left, y: 1, z: 0 }, { x: 0, y: rowHeight, z: 0 }, ["x", "y", "z"]);
-    this.buleprint.belt.generateBelt({ x: 0, y: rowHeight, z: 0 }, { x: nextLeft, y: rowHeight + 1, z: 0 }, ["y", "x", "z"]);
+    this.blueprint.belt.generateBelt({ x: left, y: 1, z: 0 }, { x: 0, y: rowHeight, z: 0 }, ["x", "y", "z"]);
+    this.blueprint.belt.generateBelt({ x: 0, y: rowHeight, z: 0 }, { x: nextLeft, y: rowHeight + 1, z: 0 }, ["y", "x", "z"]);
     // 连接右侧
-    this.buleprint.belt.generateBelt({ x: nextRight, y: rowHeight + 1, z: 0 }, { x: rowLength, y: rowHeight, z: 0 }, ["x", "y", "z"]);
-    this.buleprint.belt.generateBelt({ x: rowLength, y: rowHeight, z: 0 }, { x: right, y: 5, z: 0 }, ["y", "x", "z"]);
+    this.blueprint.belt.generateBelt({ x: nextRight, y: rowHeight + 1, z: 0 }, { x: rowLength, y: rowHeight, z: 0 }, ["x", "y", "z"]);
+    this.blueprint.belt.generateBelt({ x: rowLength, y: rowHeight, z: 0 }, { x: right, y: 5, z: 0 }, ["y", "x", "z"]);
   }
 
   generate() {
     // 遍历矩阵，元素为空时表示空地，非空时表示建筑
     // 反转偶数行建筑
-    this.buleprint.matrix.forEach((row, i) => {
-      if (Math.ceil((i + 1) / this.buleprint.height) % 2 === 0) {
+    this.blueprint.matrix.forEach((row, i) => {
+      if (Math.ceil((i + 1) / this.blueprint.height) % 2 === 0) {
         row.reverse();
       }
     });
     const buildingMap = new Map();
-    const rowLength = this.buleprint.matrix[0].length;
-    Array.from(this.buleprint.buildingsMap.values()).forEach((building) => {
+    const rowLength = this.blueprint.matrix[0].length;
+    Array.from(this.blueprint.buildingsMap.values()).forEach((building) => {
       let key = `${building.itemName}-${building.localOffset[0].x}-${building.localOffset[0].y}-${building.localOffset[0].z}`;
-      if (Math.ceil((building.localOffset[0].y + 1) / this.buleprint.height) % 2 === 0) {
+      if (Math.ceil((building.localOffset[0].y + 1) / this.blueprint.height) % 2 === 0) {
         this.buildingReverse(building, rowLength);
         key = `${building.itemName}-${building.localOffset[0].x}-${building.localOffset[0].y}-${building.localOffset[0].z}`;
       }
       buildingMap.set(key, building);
     });
-    this.buleprint.buildingsMap = buildingMap;
+    this.blueprint.buildingsMap = buildingMap;
 
-    if (this.buleprint.recycleMode === 1) {
+    if (this.blueprint.recycleMode === 1) {
       this.connectRows();
     } else {
       this.connectRows4Dir();
     }
 
-    // 遍历时为建筑分配 index，从 0 开始，只有 index 为空时才分配，并将新分配 index 的建筑对象 加入到 buleprint.buildings 中
+    // 遍历时为建筑分配 index，从 0 开始，只有 index 为空时才分配，并将新分配 index 的建筑对象 加入到 blueprint.buildings 中
     let index = 0;
-    this.dspBuleprint.buildings = Array.from(this.buleprint.buildingsMap.values());
-    this.dspBuleprint.buildings.forEach((building) => {
+    this.dspBlueprint.buildings = Array.from(this.blueprint.buildingsMap.values());
+    this.dspBlueprint.buildings.forEach((building) => {
       building.index = index++;
       delete building.attribute;
       if (!inserterIds.includes(building.itemId)) {
@@ -346,7 +370,7 @@ export class BlueprintBuilder {
         building.localOffset[1].z = building.localOffset[0].z;
       }
     });
-    let unLinked = this.dspBuleprint.buildings.filter((f) => typeof f.inputObjIdx === "object");
+    let unLinked = this.dspBlueprint.buildings.filter((f) => typeof f.inputObjIdx === "object");
     let unlinkLength;
     while (unLinked.length) {
       unlinkLength = unLinked.length;
@@ -361,7 +385,7 @@ export class BlueprintBuilder {
         throw new Error("存在连接异常的建筑");
       }
     }
-    unLinked = this.dspBuleprint.buildings.filter((f) => typeof f.outputObjIdx === "object");
+    unLinked = this.dspBlueprint.buildings.filter((f) => typeof f.outputObjIdx === "object");
     while (unLinked.length) {
       unlinkLength = unLinked.length;
       unLinked = unLinked.filter((f) => {
@@ -379,6 +403,6 @@ export class BlueprintBuilder {
 
   toStr() {
     this.generate();
-    return toStr(this.dspBuleprint);
+    return toStr(this.dspBlueprint);
   }
 }
