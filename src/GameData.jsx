@@ -54,26 +54,6 @@ export const game_data_info_list = [
         "name": "原版游戏",
         "version": "0.10.31.24710",
     },
-    {
-        "GUID": MoreMegaStructureGUID,
-        "name": "更多巨构",
-        "version": "1.7.5",
-    },
-    {
-        "GUID": TheyComeFromVoidGUID,
-        "name": "深空来敌",
-        "version": "3.4.3",
-    },
-    {
-        "GUID": GenesisBookGUID,
-        "name": "创世之书",
-        "version": "3.0.14",
-    },
-    {
-        "GUID": FractionateEverythingGUID,
-        "name": "万物分馏",
-        "version": "1.4.4",
-    },
 ]
 
 export function get_mod_options() {
