@@ -44,7 +44,8 @@ const DEFAULT_SETTINGS = {
     blue_buff: false,
 
     mineralize_list: [],
-    natural_production_line: []
+    natural_production_line: [],
+    blueprint_mode: "混带"
 };
 export const DefaultSettingsContext = createContext(DEFAULT_SETTINGS);
 

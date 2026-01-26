@@ -1,7 +1,7 @@
 import structuredClone from '@ungap/structured-clone';
 import {useContext, useEffect, useRef, useState} from 'react';
 import {Trash} from 'react-bootstrap-icons';
-import {GameInfoContext, GlobalStateContext, SettingsSetterContext} from './contexts';
+import {GameInfoContext, GlobalStateContext, SettingsSetterContext, SettingsContext} from './contexts';
 import {ItemIcon} from './icon';
 import {ItemSelect} from './item_select';
 
@@ -24,6 +24,7 @@ function get_item_data(game_data) {
 
 export function NeedsList({needs_list, set_needs_list}) {
     const global_state = useContext(GlobalStateContext);
+    const settings = useContext(SettingsContext);
     const count_ref = useRef(60);
     const set_settings = useContext(SettingsSetterContext);
     let game_data = global_state.game_data;
@@ -80,6 +81,27 @@ export function NeedsList({needs_list, set_needs_list}) {
 
     return <>
         <div className="w-fit mt-3 d-flex align-items-center row-gap-1 flex-wrap">
+            
+            {/* 蓝图模式切换 */}
+            <div className="d-flex align-items-center me-5">
+                <small className="me-2 fw-bold text-nowrap">蓝图模式</small>
+                <div className="btn-group btn-group-sm" role="group">
+                    <button 
+                        type="button" 
+                        className={`btn ${settings.blueprint_mode === "混带" ? "btn-primary" : "btn-outline-primary"}`}
+                        onClick={() => set_settings({"blueprint_mode": "混带"})}
+                    >
+                        混带
+                    </button>
+                    <button 
+                        type="button" 
+                        className={`btn ${settings.blueprint_mode === "经典" ? "btn-primary" : "btn-outline-primary"}`}
+                        onClick={() => set_settings({"blueprint_mode": "经典"})}
+                    >
+                        经典
+                    </button>
+                </div>
+            </div>
             <small className="me-3 fw-bold text-nowrap">添加需求</small>
             <div className="input-group input-group-sm w-fit d-inline-flex me-5">
                 <input type="text" className="form-control" style={{width: "6em"}} ref={count_ref} defaultValue={60}/>

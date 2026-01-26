@@ -1,6 +1,6 @@
 import structuredClone from '@ungap/structured-clone';
 import {useContext, useRef, useState} from 'react';
-import {GlobalStateContext, SchemeDataSetterContext, SettingsSetterContext} from './contexts';
+import {GlobalStateContext, SchemeDataSetterContext, SettingsSetterContext, SettingsContext} from './contexts';
 import {ItemIcon} from './icon';
 import {NplRows} from './natural_production_line';
 import {HorizontalMultiButtonSelect, Recipe} from './recipe';
@@ -94,12 +94,12 @@ export function FactorySelect({recipe_id, choice, onChange, no_gap}) {
 
 export function Result({needs_list, set_needs_list}) {
     const global_state = useContext(GlobalStateContext);
+    const settings = useContext(SettingsContext);
     const set_scheme_data = useContext(SchemeDataSetterContext);
     const set_settings = useContext(SettingsSetterContext);
     // const [result_dict, set_result_dict] = useState(global_state.calculate());
     let game_data = global_state.game_data;
     let scheme_data = global_state.scheme_data;
-    let settings = global_state.settings;
     let item_data = global_state.item_data;
     let item_graph = global_state.item_graph;
     let time_tick = settings.is_time_unit_minute ? 60 : 1;
@@ -286,7 +286,7 @@ export function Result({needs_list, set_needs_list}) {
             </span>;
         }
 
-        result_table_rows.push(<tr className={row_class} key={i}>
+result_table_rows.push(<tr className={row_class} key={i}>
             {/* 操作 */}
             <td>
                 {is_mineralized ?
@@ -325,7 +325,7 @@ export function Result({needs_list, set_needs_list}) {
             {/* 所选配方 */}
             <td><RecipeSelect item={i} onChange={change_recipe}
                               choice={scheme_data.item_recipe_choices[i]}/></td>
-{/* 所选增产模式 */}
+ {/* 所选增产模式 */}
             <td><ProModeSelect recipe_id={recipe_id} onChange={change_pro_mode}
                                choice={scheme_data.scheme_for_recipe[recipe_id]["增产模式"]}/></td>
             {/* 所选增产剂 */}
@@ -334,6 +334,20 @@ export function Result({needs_list, set_needs_list}) {
             {/* 所选工厂种类 */}
             <td><FactorySelect recipe_id={recipe_id} onChange={change_factory}
                                choice={scheme_data.scheme_for_recipe[recipe_id]["建筑"]}/></td>
+            {/* 经典模式蓝图按钮 */}
+            {settings.blueprint_mode === "经典" && (
+                <td className="text-center">
+                    <button 
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => {
+                            const recipe = game_data.recipe_data[recipe_id];
+                            alert(`配方信息：\n物品：${i}\n配方ID：${recipe_id}\n配方名称：${recipe.名称}\n设施：${recipe.设施}\n时间：${recipe.时间}秒\n原料：${JSON.stringify(recipe.原料, null, 2)}\n产物：${JSON.stringify(recipe.产物, null, 2)}`);
+                        }}
+                    >
+                        蓝图
+                    </button>
+                </td>
+            )}
         </tr>);
 
         // add by lian.zt
@@ -469,7 +483,7 @@ export function Result({needs_list, set_needs_list}) {
 
     return <div className="my-3 d-flex gap-5">
         {/* 结果表格 */}
-        <table className="table table-sm align-middle w-auto result-table">
+<table className="table table-sm align-middle w-auto result-table">
             <thead>
             <tr className="text-center text-nowrap">
                 <th width={60}>操作</th>
@@ -480,6 +494,7 @@ export function Result({needs_list, set_needs_list}) {
                 <th width={180}>增产模式</th>
                 <th width={160}>增产剂</th>
                 <th width={170}>工厂类型</th>
+                {settings.blueprint_mode === "经典" && <th width={80}>蓝图</th>}
             </tr>
             </thead>
             <tbody className="table-group-divider">
@@ -508,212 +523,32 @@ export function Result({needs_list, set_needs_list}) {
                     {surplus_doms}
                 </fieldset>}
 
-            {/* add by lian.zt 生成蓝图 */}
-            {produceUnits.length > 0 && 
-            <>
-                <fieldset className="w-fit">
-                    <legend><small>生成蓝图</small></legend>
-                    <table>
-                        <tbody>
-                        <tr>
-                            <td className="d-flex align-items-center text-nowrap">
-                                <span className="ms-auto me-1">传送带</span>
-                            </td>
-                            <td className="ps-2 text-nowrap">
-                                <HorizontalMultiButtonSelect 
-                                    choice={scheme_data.scheme_for_recipe["传送带"] || 0} 
-                                    options={[
-                                        {value: 0, item_icon: "传送带"},
-                                        {value: 1, item_icon: "高速传送带"},
-                                        {value: 2, item_icon: "极速传送带"}
-                                    ]}
-                                    onChange={(value) => {
-                                        set_scheme_data(old_scheme_data => {
-                                            let scheme_data = structuredClone(old_scheme_data);
-                                            scheme_data.scheme_for_recipe["传送带"] = value;
-                                            return scheme_data;
-                                        })
-                                    }}
-                                />
-                            </td>
-                        </tr>
-                        {/* 当回收模式是四向分流器(2)时才显示这些选项 */}
-                        {scheme_data.scheme_for_recipe["回收"] === 2 && (
-                            <>
-                                <tr>
-                            <td className="d-flex align-items-center text-nowrap">
-                                <span className="ms-auto me-1">分拣器</span>
-                            </td>
-                            <td className="ps-2 text-nowrap">
-                                <HorizontalMultiButtonSelect 
-                                    choice={scheme_data.scheme_for_recipe["分拣器"] || 0} 
-                                    options={[
-                                        {value: 0, item_icon: "分拣器"},
-                                        {value: 1, item_icon: "高速分拣器"},
-                                        {value: 2, item_icon: "极速分拣器"}
-                                    ]}
-                                    onChange={(value) => {
-                                        set_scheme_data(old_scheme_data => {
-                                            let scheme_data = structuredClone(old_scheme_data);
-                                            scheme_data.scheme_for_recipe["分拣器"] = value;
-                                            return scheme_data;
-                                        })
-                                    }}
-                                />
-                            </td>
-                            </tr>
-                            </>
-                        )}
-                        <tr>
-                            <td className="d-flex align-items-center text-nowrap">
-                                <span className="ms-auto me-1">回收</span>
-                            </td>
-                            <td className="ps-2 text-nowrap">
-                                <HorizontalMultiButtonSelect 
-                                    choice={scheme_data.scheme_for_recipe["回收"] || 1} 
-                                    options={[
-                                        {value: 2, item_icon: "四向分流器"},
-                                        {value: 1, item_icon: "集装分拣器"}
-                                    ]}
-                                    onChange={(value) => {
-                                        set_scheme_data(old_scheme_data => {
-                                            let scheme_data = structuredClone(old_scheme_data);
-                                            scheme_data.scheme_for_recipe["回收"] = value;
-                                            return scheme_data;
-                                        })
-                                    }}
-                                />
-                            </td>
-                        </tr>
-                        {/* 当回收模式不是四向分流器(2)时才显示这些选项 */}
-                        {scheme_data.scheme_for_recipe["回收"] !== 2 && (
-                            <>
-                                <tr>
-                                    <td className="d-flex align-items-center text-nowrap">
-                                        <span className="ms-auto me-1">行数</span>
-                                    </td>
-                                    <td className="ps-2 text-nowrap">
-                                        <HorizontalMultiButtonSelect 
-                                            choice={scheme_data.scheme_for_recipe["行数"] || 1} 
-                                            options={[
-                                                {value: 1, label: "1"},
-                                                {value: 2, label: "2"},
-                                                {value: 3, label: "3"},
-                                                {value: 4, label: "4"},
-                                                {value: 5, label: "5"}
-                                            ]}
-                                            onChange={(value) => {
-                                                set_scheme_data(old_scheme_data => {
-                                                    let scheme_data = structuredClone(old_scheme_data);
-                                                    scheme_data.scheme_for_recipe["行数"] = value;
-                                                    return scheme_data;
-                                                })
-                                            }}
-                                            className={"raw-text-selection"}
-                                        />
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="d-flex align-items-center text-nowrap">
-                                        <span className="ms-auto me-1">堆叠</span>
-                                    </td>
-                                    <td className="ps-2 text-nowrap">
-                                        <HorizontalMultiButtonSelect 
-                                            choice={scheme_data.scheme_for_recipe["物流站"] === 1 ? 4 : (scheme_data.scheme_for_recipe["堆叠"] || 1)} 
-                                            options={[
-                                                {value: 1, label: "1"},
-                                                {value: 2, label: "2"},
-                                                {value: 3, label: "3"},
-                                                {value: 4, label: "4"}
-                                            ]}
-                                            onChange={(value) => {
-                                                set_scheme_data(old_scheme_data => {
-                                                    let scheme_data = structuredClone(old_scheme_data);
-                                                    scheme_data.scheme_for_recipe["堆叠"] = value;
-                                                    return scheme_data;
-                                                })
-                                            }}
-                                            className={"raw-text-selection"}
-                                            disabled={scheme_data.scheme_for_recipe["物流站"] === 1}
-                                        />
-                                    </td>
-                                </tr>
-<tr>
-                                    <td className="d-flex align-items-center text-nowrap">
-                                        <span className="ms-auto me-1">研究站堆叠</span>
-                                    </td>
-                                    <td className="ps-2 text-nowrap">
-                                        <select 
-                                            value={scheme_data.scheme_for_recipe["层高"] || 15}
-                                            onChange={(e) => {
-                                                set_scheme_data(old_scheme_data => {
-                                                    let scheme_data = structuredClone(old_scheme_data);
-                                                    scheme_data.scheme_for_recipe["层高"] = parseInt(e.target.value);
-                                                    return scheme_data;
-                                                })
-                                            }}
-                                            className="form-select form-select-sm"
-                                            style={{width: 'auto', minWidth: '70px'}}
-                                        >
-                                            {[3,5,7,9,11,13,15].map(value => (
-                                                <option key={value} value={value}>
-                                                    {value}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="d-flex align-items-center text-nowrap">
-                                        <span className="ms-auto me-1">物流站</span>
-                                    </td>
-                                    <td className="ps-2 text-nowrap">
-                                        <HorizontalMultiButtonSelect 
-                                            choice={scheme_data.scheme_for_recipe["物流站"] || 2}
-                                            options={[
-                                                {value: 1, label: "4集装"},
-                                                {value: 2, label: "无集装"}
-                                            ]}
-                                            onChange={(value) => {
-                                                set_scheme_data(old_scheme_data => {
-                                                    let scheme_data = structuredClone(old_scheme_data);
-                                                    scheme_data.scheme_for_recipe["物流站"] = parseInt(value);
-                                                    return scheme_data;
-                                                })
-                                            }}
-                                            className={"raw-text-selection"}
-                                        />
-                                    </td>
-                                </tr>
-                            </>
-                        )}
-                        <tr>
-                            <td className="d-flex align-items-center text-nowrap">
-                                <span className="ms-auto me-1">利用率</span>
-                            </td>
-                            <td className="ps-2 text-nowrap">
-                                {beltUtilization || '-'}
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                    <div className="d-flex flex-column align-items-center">
-                        <div className="d-flex gap-2">
-                            {/* <button className="btn btn-outline-primary text-nowrap"
-                                onClick={() => handleCalculate(produceUnits, lp_surplus_list, needs_list)}>
-                                <div>计算</div>
-                            </button> */}
-                            <button className="btn btn-primary btn-sm text-nowrap px-4"
-                                onClick={() => handleGenerate(produceUnits, lp_surplus_list, needs_list)}>
-                                <div>生成</div>
-                            </button>    
-                        </div>
-                        <div className="mt-2">
-                            <textarea ref={textareaRef} rows="5" cols="20" readOnly onClick="this.select()"/>
-                        </div>  
-                    </div>
-                </fieldset>
-            </>
+            {/* 混带模式生成蓝图组件 */}
+            {produceUnits.length > 0 && settings.blueprint_mode === "混带" && 
+                <MixedBlueprintPanel 
+                    produceUnits={produceUnits}
+                    lp_surplus_list={lp_surplus_list}
+                    needs_list={needs_list}
+                    scheme_data={scheme_data}
+                    set_scheme_data={set_scheme_data}
+                    beltUtilization={beltUtilization}
+                    handleGenerate={handleGenerate}
+                    textareaRef={textareaRef}
+                />
+            }
+            
+            {/* 经典模式生成蓝图组件 */}
+            {produceUnits.length > 0 && settings.blueprint_mode === "经典" && 
+                <ClassicBlueprintPanel 
+                    produceUnits={produceUnits}
+                    lp_surplus_list={lp_surplus_list}
+                    needs_list={needs_list}
+                    scheme_data={scheme_data}
+                    set_scheme_data={set_scheme_data}
+                    beltUtilization={beltUtilization}
+                    handleGenerate={handleGenerate}
+                    textareaRef={textareaRef}
+                />
             }
 
             {building_rows.length > 0 &&
@@ -737,4 +572,276 @@ export function Result({needs_list, set_needs_list}) {
                 </>}
         </div>
     </div>;
+}
+
+// 混带模式生成蓝图组件
+function MixedBlueprintPanel({produceUnits, lp_surplus_list, needs_list, scheme_data, set_scheme_data, beltUtilization, handleGenerate, textareaRef}) {
+    return (
+        <fieldset className="w-fit">
+            <legend><small>生成蓝图</small></legend>
+            <table>
+                <tbody>
+                <tr>
+                    <td className="d-flex align-items-center text-nowrap">
+                        <span className="ms-auto me-1">传送带</span>
+                    </td>
+                    <td className="ps-2 text-nowrap">
+                        <HorizontalMultiButtonSelect 
+                            choice={scheme_data.scheme_for_recipe["传送带"] || 0} 
+                            options={[
+                                {value: 0, item_icon: "传送带"},
+                                {value: 1, item_icon: "高速传送带"},
+                                {value: 2, item_icon: "极速传送带"}
+                            ]}
+                            onChange={(value) => {
+                                set_scheme_data(old_scheme_data => {
+                                    let scheme_data = structuredClone(old_scheme_data);
+                                    scheme_data.scheme_for_recipe["传送带"] = value;
+                                    return scheme_data;
+                                })
+                            }}
+                        />
+                    </td>
+                </tr>
+                {/* 当回收模式是四向分流器(2)时才显示这些选项 */}
+                {scheme_data.scheme_for_recipe["回收"] === 2 && (
+                    <>
+                        <tr>
+                            <td className="d-flex align-items-center text-nowrap">
+                                <span className="ms-auto me-1">分拣器</span>
+                            </td>
+                            <td className="ps-2 text-nowrap">
+                                <HorizontalMultiButtonSelect 
+                                    choice={scheme_data.scheme_for_recipe["分拣器"] || 0} 
+                                    options={[
+                                        {value: 0, item_icon: "分拣器"},
+                                        {value: 1, item_icon: "高速分拣器"},
+                                        {value: 2, item_icon: "极速分拣器"}
+                                    ]}
+                                    onChange={(value) => {
+                                        set_scheme_data(old_scheme_data => {
+                                            let scheme_data = structuredClone(old_scheme_data);
+                                            scheme_data.scheme_for_recipe["分拣器"] = value;
+                                            return scheme_data;
+                                        })
+                                    }}
+                                />
+                            </td>
+                        </tr>
+                    </>
+                )}
+                <tr>
+                    <td className="d-flex align-items-center text-nowrap">
+                        <span className="ms-auto me-1">回收</span>
+                    </td>
+                    <td className="ps-2 text-nowrap">
+                        <HorizontalMultiButtonSelect 
+                            choice={scheme_data.scheme_for_recipe["回收"] || 1} 
+                            options={[
+                                {value: 2, item_icon: "四向分流器"},
+                                {value: 1, item_icon: "集装分拣器"}
+                            ]}
+                            onChange={(value) => {
+                                set_scheme_data(old_scheme_data => {
+                                    let scheme_data = structuredClone(old_scheme_data);
+                                    scheme_data.scheme_for_recipe["回收"] = value;
+                                    return scheme_data;
+                                })
+                            }}
+                        />
+                    </td>
+                </tr>
+                {/* 当回收模式不是四向分流器(2)时才显示这些选项 */}
+                {scheme_data.scheme_for_recipe["回收"] !== 2 && (
+                    <>
+                        <tr>
+                            <td className="d-flex align-items-center text-nowrap">
+                                <span className="ms-auto me-1">行数</span>
+                            </td>
+                            <td className="ps-2 text-nowrap">
+                                <HorizontalMultiButtonSelect 
+                                    choice={scheme_data.scheme_for_recipe["行数"] || 1} 
+                                    options={[
+                                        {value: 1, label: "1"},
+                                        {value: 2, label: "2"},
+                                        {value: 3, label: "3"},
+                                        {value: 4, label: "4"},
+                                        {value: 5, label: "5"}
+                                    ]}
+                                    onChange={(value) => {
+                                        set_scheme_data(old_scheme_data => {
+                                            let scheme_data = structuredClone(old_scheme_data);
+                                            scheme_data.scheme_for_recipe["行数"] = value;
+                                            return scheme_data;
+                                        })
+                                    }}
+                                    className={"raw-text-selection"}
+                                />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td className="d-flex align-items-center text-nowrap">
+                                <span className="ms-auto me-1">堆叠</span>
+                            </td>
+                            <td className="ps-2 text-nowrap">
+                                <HorizontalMultiButtonSelect 
+                                    choice={scheme_data.scheme_for_recipe["物流站"] === 1 ? 4 : (scheme_data.scheme_for_recipe["堆叠"] || 1)} 
+                                    options={[
+                                        {value: 1, label: "1"},
+                                        {value: 2, label: "2"},
+                                        {value: 3, label: "3"},
+                                        {value: 4, label: "4"}
+                                    ]}
+                                    onChange={(value) => {
+                                        set_scheme_data(old_scheme_data => {
+                                            let scheme_data = structuredClone(old_scheme_data);
+                                            scheme_data.scheme_for_recipe["堆叠"] = value;
+                                            return scheme_data;
+                                        })
+                                    }}
+                                    className={"raw-text-selection"}
+                                    disabled={scheme_data.scheme_for_recipe["物流站"] === 1}
+                                />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td className="d-flex align-items-center text-nowrap">
+                                <span className="ms-auto me-1">研究站堆叠</span>
+                            </td>
+                            <td className="ps-2 text-nowrap">
+                                <select 
+                                    value={scheme_data.scheme_for_recipe["层高"] || 15}
+                                    onChange={(e) => {
+                                        set_scheme_data(old_scheme_data => {
+                                            let scheme_data = structuredClone(old_scheme_data);
+                                            scheme_data.scheme_for_recipe["层高"] = parseInt(e.target.value);
+                                            return scheme_data;
+                                        })
+                                    }}
+                                    className="form-select form-select-sm"
+                                    style={{width: 'auto', minWidth: '70px'}}
+                                >
+                                    {[3,5,7,9,11,13,15].map(value => (
+                                        <option key={value} value={value}>
+                                            {value}
+                                        </option>
+                                    ))}
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td className="d-flex align-items-center text-nowrap">
+                                <span className="ms-auto me-1">物流站</span>
+                            </td>
+                            <td className="ps-2 text-nowrap">
+                                <HorizontalMultiButtonSelect 
+                                    choice={scheme_data.scheme_for_recipe["物流站"] || 2}
+                                    options={[
+                                        {value: 1, label: "4集装"},
+                                        {value: 2, label: "无集装"}
+                                    ]}
+                                    onChange={(value) => {
+                                        set_scheme_data(old_scheme_data => {
+                                            let scheme_data = structuredClone(old_scheme_data);
+                                            scheme_data.scheme_for_recipe["物流站"] = parseInt(value);
+                                            return scheme_data;
+                                        })
+                                    }}
+                                    className={"raw-text-selection"}
+                                />
+                            </td>
+                        </tr>
+                    </>
+                )}
+                <tr>
+                    <td className="d-flex align-items-center text-nowrap">
+                        <span className="ms-auto me-1">利用率</span>
+                    </td>
+                    <td className="ps-2 text-nowrap">
+                        {beltUtilization || '-'}
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <div className="d-flex flex-column align-items-center">
+                <div className="d-flex gap-2">
+                    <button className="btn btn-primary btn-sm text-nowrap px-4"
+                        onClick={() => handleGenerate(produceUnits, lp_surplus_list, needs_list)}>
+                        <div>生成</div>
+                    </button>    
+                </div>
+                <div className="mt-2">
+                    <textarea ref={textareaRef} rows="5" cols="20" readOnly onClick="this.select()"/>
+                </div>  
+            </div>
+        </fieldset>
+    );
+}
+
+// 经典模式生成蓝图组件
+function ClassicBlueprintPanel({produceUnits, lp_surplus_list, needs_list, scheme_data, set_scheme_data, beltUtilization, handleGenerate, textareaRef}) {
+    return (
+        <fieldset className="w-fit">
+            <legend><small>生成蓝图</small></legend>
+            <table>
+                <tbody>
+                <tr>
+                    <td className="d-flex align-items-center text-nowrap">
+                        <span className="ms-auto me-1">传送带</span>
+                    </td>
+                    <td className="ps-2 text-nowrap">
+                        <HorizontalMultiButtonSelect 
+                            choice={scheme_data.scheme_for_recipe["传送带"] || 0} 
+                            options={[
+                                {value: 0, item_icon: "传送带"},
+                                {value: 1, item_icon: "高速传送带"},
+                                {value: 2, item_icon: "极速传送带"}
+                            ]}
+                            onChange={(value) => {
+                                set_scheme_data(old_scheme_data => {
+                                    let scheme_data = structuredClone(old_scheme_data);
+                                    scheme_data.scheme_for_recipe["传送带"] = value;
+                                    return scheme_data;
+                                })
+                            }}
+                        />
+                    </td>
+                </tr>
+                <tr>
+                    <td className="d-flex align-items-center text-nowrap">
+                        <span className="ms-auto me-1">分拣器</span>
+                    </td>
+                    <td className="ps-2 text-nowrap">
+                        <HorizontalMultiButtonSelect 
+                            choice={scheme_data.scheme_for_recipe["分拣器"] || 0} 
+                            options={[
+                                {value: 0, item_icon: "分拣器"},
+                                {value: 1, item_icon: "高速分拣器"},
+                                {value: 2, item_icon: "极速分拣器"}
+                            ]}
+                            onChange={(value) => {
+                                set_scheme_data(old_scheme_data => {
+                                    let scheme_data = structuredClone(old_scheme_data);
+                                    scheme_data.scheme_for_recipe["分拣器"] = value;
+                                    return scheme_data;
+                                })
+                            }}
+                        />
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <div className="d-flex flex-column align-items-center">
+                <div className="d-flex gap-2">
+                    <button className="btn btn-primary btn-sm text-nowrap px-4"
+                        onClick={() => handleGenerate(produceUnits, lp_surplus_list, needs_list)}>
+                        <div>生成</div>
+                    </button>    
+                </div>
+                <div className="mt-2">
+                    <textarea ref={textareaRef} rows="5" cols="20" readOnly onClick="this.select()"/>
+                </div>  
+            </div>
+        </fieldset>
+    );
 }
